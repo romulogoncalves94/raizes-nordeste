@@ -12,7 +12,10 @@ CREATE TABLE usuarios
     senha       VARCHAR(255)        NOT NULL,
     perfil      VARCHAR(30)         NOT NULL CHECK (perfil IN ('GERENTE', 'ATENDENTE', 'CLIENTE')),
     aceite_lgpd BOOLEAN             NOT NULL DEFAULT FALSE,
-    criado_em   TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP
+    criado_em    TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
+    criado_por   VARCHAR(150),
+    alterado_em  TIMESTAMP WITH TIME ZONE,
+    alterado_por VARCHAR(150)
 );
 
 CREATE TABLE unidades
@@ -20,14 +23,22 @@ CREATE TABLE unidades
     id       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nome     VARCHAR(150)       NOT NULL,
     cnpj     VARCHAR(18) UNIQUE NOT NULL,
-    endereco VARCHAR(255)       NOT NULL
+    endereco VARCHAR(255)       NOT NULL,
+    criado_em    TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
+    criado_por   VARCHAR(150),
+    alterado_em  TIMESTAMP WITH TIME ZONE,
+    alterado_por VARCHAR(150)
 );
 
 CREATE TABLE produtos
 (
     id    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nome  VARCHAR(150)   NOT NULL,
-    preco DECIMAL(10, 2) NOT NULL
+    preco DECIMAL(10, 2) NOT NULL,
+    criado_em    TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
+    criado_por   VARCHAR(150),
+    alterado_em  TIMESTAMP WITH TIME ZONE,
+    alterado_por VARCHAR(150)
 );
 
 CREATE TABLE estoques
@@ -36,6 +47,10 @@ CREATE TABLE estoques
     id_unidade UUID NOT NULL,
     id_produto UUID NOT NULL,
     quantidade INT  NOT NULL    DEFAULT 0,
+    criado_em    TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
+    criado_por   VARCHAR(150),
+    alterado_em  TIMESTAMP WITH TIME ZONE,
+    alterado_por VARCHAR(150),
     CONSTRAINT fk_estoque_unidade FOREIGN KEY (id_unidade) REFERENCES unidades (id) ON DELETE CASCADE,
     CONSTRAINT fk_estoque_produto FOREIGN KEY (id_produto) REFERENCES produtos (id) ON DELETE CASCADE,
     CONSTRAINT uk_unidade_produto UNIQUE (id_unidade, id_produto)
@@ -50,7 +65,10 @@ CREATE TABLE pedidos
     status       VARCHAR(30)    NOT NULL CHECK (status IN ('AGUARDANDO_PAGAMENTO', 'PAGAMENTO_REALIZADO', 'RECEBIDO',
                                                            'EM_PREPARO', 'FINALIZADO', 'CANCELADO')),
     valor_total  DECIMAL(10, 2) NOT NULL,
-    criado_em    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    criado_em    TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
+    criado_por   VARCHAR(150),
+    alterado_em  TIMESTAMP WITH TIME ZONE,
+    alterado_por VARCHAR(150),
     CONSTRAINT fk_pedido_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios (id) ON DELETE SET NULL,
     CONSTRAINT fk_pedido_unidade FOREIGN KEY (id_unidade) REFERENCES unidades (id)
 );
@@ -62,6 +80,10 @@ CREATE TABLE itens_pedido
     id_produto     UUID           NOT NULL,
     quantidade     INT            NOT NULL,
     preco_unitario DECIMAL(10, 2) NOT NULL,
+    criado_em    TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
+    criado_por   VARCHAR(150),
+    alterado_em  TIMESTAMP WITH TIME ZONE,
+    alterado_por VARCHAR(150),
     CONSTRAINT fk_item_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos (id) ON DELETE CASCADE,
     CONSTRAINT fk_item_produto FOREIGN KEY (id_produto) REFERENCES produtos (id)
 );
@@ -75,6 +97,10 @@ CREATE TABLE pagamentos
     status               VARCHAR(30) NOT NULL CHECK (status IN ('PENDENTE', 'APROVADO', 'RECUSADO')),
     transacao_gateway_id VARCHAR(100),
     data_processamento   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    criado_em    TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
+    criado_por   VARCHAR(150),
+    alterado_em  TIMESTAMP WITH TIME ZONE,
+    alterado_por VARCHAR(150),
     CONSTRAINT fk_pagamento_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos (id) ON DELETE CASCADE
 );
 
