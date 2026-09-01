@@ -1,7 +1,7 @@
 -- V1__create_initial_schema.sql
 
 CREATE
-EXTENSION IF NOT EXISTS "uuid-ossp";
+    EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE usuarios
 (
@@ -107,8 +107,8 @@ CREATE TABLE pagamentos
     CONSTRAINT fk_pagamento_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos (id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_estoque_unidade_unidade ON estoque_unidade (id_unidade);
-CREATE INDEX idx_estoque_unidade_produto ON estoque_unidade (id_produto);
+CREATE INDEX idx_estoque_unidade_unidade ON estoques (id_unidade);
+CREATE INDEX idx_estoque_unidade_produto ON estoques (id_produto);
 
 CREATE INDEX idx_pedidos_usuario ON pedidos (id_usuario);
 CREATE INDEX idx_pedidos_unidade ON pedidos (id_unidade);

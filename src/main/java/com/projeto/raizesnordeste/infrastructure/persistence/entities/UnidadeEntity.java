@@ -18,7 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "usuarios")
+@Table(name = "unidades")
 public class UnidadeEntity extends AuditoriaEntity {
 
     @Id

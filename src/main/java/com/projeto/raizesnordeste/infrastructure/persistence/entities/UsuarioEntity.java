@@ -26,7 +26,7 @@ public class UsuarioEntity extends AuditoriaEntity {
 
     @Id
     @Column(name = "ID")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID  id;
 
     @Column(name = "NOME", nullable = false, length = 150)
