@@ -38,8 +38,9 @@ public class PedidoEntity extends AuditoriaEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "ID_USUARIO")
-    private UUID idUsuario;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ID_USUARIO")
+    private UsuarioEntity usuario;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ID_UNIDADE", nullable = false)

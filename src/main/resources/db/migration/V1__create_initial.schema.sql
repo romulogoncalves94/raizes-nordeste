@@ -5,17 +5,18 @@ CREATE
 
 CREATE TABLE usuarios
 (
-    id           UUID PRIMARY KEY             DEFAULT uuid_generate_v4(),
-    nome         VARCHAR(150)        NOT NULL,
-    cpf          VARCHAR(14) UNIQUE  NOT NULL,
-    email        VARCHAR(150) UNIQUE NOT NULL,
-    senha        VARCHAR(255)        NOT NULL,
-    perfil       VARCHAR(30)         NOT NULL CHECK (perfil IN ('GERENTE', 'ATENDENTE', 'CLIENTE')),
-    aceite_lgpd  BOOLEAN             NOT NULL DEFAULT FALSE,
-    criado_em    TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
-    criado_por   VARCHAR(150),
-    alterado_em  TIMESTAMP WITH TIME ZONE,
-    alterado_por VARCHAR(150)
+    id                UUID PRIMARY KEY             DEFAULT uuid_generate_v4(),
+    nome              VARCHAR(150)        NOT NULL,
+    cpf               VARCHAR(14) UNIQUE  NOT NULL,
+    email             VARCHAR(150) UNIQUE NOT NULL,
+    senha             VARCHAR(255)        NOT NULL,
+    perfil            VARCHAR(30)         NOT NULL CHECK (perfil IN ('GERENTE', 'ATENDENTE', 'CLIENTE')),
+    aceite_lgpd       BOOLEAN             NOT NULL DEFAULT FALSE,
+    aceite_fidelidade BOOLEAN             NOT NULL DEFAULT FALSE,
+    criado_em         TIMESTAMP WITH TIME ZONE     DEFAULT CURRENT_TIMESTAMP,
+    criado_por        VARCHAR(150),
+    alterado_em       TIMESTAMP WITH TIME ZONE,
+    alterado_por      VARCHAR(150)
 );
 
 CREATE TABLE unidades
@@ -62,17 +63,17 @@ CREATE TABLE estoques
 CREATE TABLE pedidos
 (
     id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
-    id_usuario   UUID,
+    id_usuario   UUID           NOT NULL,
     id_unidade   UUID           NOT NULL,
     canal_pedido VARCHAR(30)    NOT NULL CHECK (canal_pedido IN ('APP', 'TOTEM', 'BALCAO', 'PICKUP', 'WEB')),
-    status       VARCHAR(30)    NOT NULL CHECK (status IN ('AGUARDANDO_PAGAMENTO', 'PAGAMENTO_REALIZADO', 'RECEBIDO',
-                                                           'EM_PREPARO', 'FINALIZADO', 'CANCELADO')),
+    status       VARCHAR(30)    NOT NULL CHECK (status IN ('AGUARDANDO_PAGAMENTO', 'COZINHA',
+                                                           'PRONTO', 'ENTREGUE', 'CANCELADO')),
     valor_total  DECIMAL(10, 2) NOT NULL,
     criado_em    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     criado_por   VARCHAR(150),
     alterado_em  TIMESTAMP WITH TIME ZONE,
     alterado_por VARCHAR(150),
-    CONSTRAINT fk_pedido_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios (id) ON DELETE SET NULL,
+    CONSTRAINT fk_pedido_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios (id),
     CONSTRAINT fk_pedido_unidade FOREIGN KEY (id_unidade) REFERENCES unidades (id)
 );
 
@@ -105,6 +106,45 @@ CREATE TABLE pagamentos
     alterado_em          TIMESTAMP WITH TIME ZONE,
     alterado_por         VARCHAR(150),
     CONSTRAINT fk_pagamento_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos (id) ON DELETE CASCADE
+);
+
+CREATE TABLE programa_fidelidade
+(
+    id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
+    id_usuario   UUID UNIQUE NOT NULL,
+    saldo_pontos INT         NOT NULL     DEFAULT 0,
+    criado_em    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    criado_por   VARCHAR(150),
+    alterado_em  TIMESTAMP WITH TIME ZONE,
+    alterado_por VARCHAR(150),
+    CONSTRAINT fk_fidelidade_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios (id) ON DELETE CASCADE
+);
+
+CREATE TABLE historico_pontos
+(
+    id            UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
+    id_fidelidade UUID        NOT NULL,
+    pontos        INT         NOT NULL,
+    tipo          VARCHAR(20) NOT NULL CHECK (tipo IN ('ACUMULO', 'RESGATE')),
+    criado_em     TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    criado_por    VARCHAR(150),
+    alterado_em   TIMESTAMP WITH TIME ZONE,
+    alterado_por  VARCHAR(150),
+    CONSTRAINT fk_historico_fidelidade FOREIGN KEY (id_fidelidade) REFERENCES programa_fidelidade (id) ON DELETE CASCADE
+);
+
+CREATE TABLE campanhas
+(
+    id                  UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
+    nome                VARCHAR(150)             NOT NULL,
+    percentual_desconto DECIMAL(10, 2)           NOT NULL,
+    data_inicio         TIMESTAMP WITH TIME ZONE NOT NULL,
+    data_fim            TIMESTAMP WITH TIME ZONE NOT NULL,
+    ativa               BOOLEAN                  DEFAULT TRUE,
+    criado_em           TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    criado_por          VARCHAR(150),
+    alterado_em         TIMESTAMP WITH TIME ZONE,
+    alterado_por        VARCHAR(150)
 );
 
 CREATE INDEX idx_estoque_unidade_unidade ON estoques (id_unidade);
