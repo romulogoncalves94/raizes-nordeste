@@ -3,7 +3,7 @@
 CREATE
     EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE usuarios
+CREATE TABLE IF NOT EXISTS usuarios
 (
     id                UUID PRIMARY KEY             DEFAULT uuid_generate_v4(),
     nome              VARCHAR(150)        NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE usuarios
     alterado_por      VARCHAR(150)
 );
 
-CREATE TABLE unidades
+CREATE TABLE IF NOT EXISTS unidades
 (
     id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
     razao_social VARCHAR(150)       NOT NULL,
@@ -34,18 +34,18 @@ CREATE TABLE unidades
     alterado_por VARCHAR(150)
 );
 
-CREATE TABLE produtos
+CREATE TABLE IF NOT EXISTS produtos
 (
     id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
     nome         VARCHAR(150)   NOT NULL,
-    preco        DECIMAL(10, 2) NOT NULL,
+    preco        NUMERIC(10, 2) NOT NULL,
     criado_em    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     criado_por   VARCHAR(150),
     alterado_em  TIMESTAMP WITH TIME ZONE,
     alterado_por VARCHAR(150)
 );
 
-CREATE TABLE estoques
+CREATE TABLE IF NOT EXISTS estoques
 (
     id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
     id_unidade   UUID NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE estoques
     CONSTRAINT uk_unidade_produto UNIQUE (id_unidade, id_produto)
 );
 
-CREATE TABLE pedidos
+CREATE TABLE IF NOT EXISTS pedidos
 (
     id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
     id_usuario   UUID           NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE pedidos
     CONSTRAINT fk_pedido_unidade FOREIGN KEY (id_unidade) REFERENCES unidades (id)
 );
 
-CREATE TABLE itens_pedido
+CREATE TABLE IF NOT EXISTS itens_pedido
 (
     id             UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
     id_pedido      UUID           NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE itens_pedido
     CONSTRAINT fk_item_produto FOREIGN KEY (id_produto) REFERENCES produtos (id)
 );
 
-CREATE TABLE pagamentos
+CREATE TABLE IF NOT EXISTS pagamentos
 (
     id                   UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
     id_pedido            UUID        NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE pagamentos
     CONSTRAINT fk_pagamento_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos (id) ON DELETE CASCADE
 );
 
-CREATE TABLE programa_fidelidade
+CREATE TABLE IF NOT EXISTS programa_fidelidade
 (
     id           UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
     id_usuario   UUID UNIQUE NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE programa_fidelidade
     CONSTRAINT fk_fidelidade_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios (id) ON DELETE CASCADE
 );
 
-CREATE TABLE historico_pontos
+CREATE TABLE IF NOT EXISTS historico_pontos
 (
     id            UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
     id_fidelidade UUID        NOT NULL,
@@ -133,11 +133,11 @@ CREATE TABLE historico_pontos
     CONSTRAINT fk_historico_fidelidade FOREIGN KEY (id_fidelidade) REFERENCES programa_fidelidade (id) ON DELETE CASCADE
 );
 
-CREATE TABLE campanhas
+CREATE TABLE IF NOT EXISTS campanhas
 (
     id                  UUID PRIMARY KEY         DEFAULT uuid_generate_v4(),
-    nome                VARCHAR(150)             NOT NULL,
-    percentual_desconto DECIMAL(10, 2)           NOT NULL,
+    nome                VARCHAR(255)             NOT NULL,
+    percentual_desconto NUMERIC(10, 2)           NOT NULL,
     data_inicio         TIMESTAMP WITH TIME ZONE NOT NULL,
     data_fim            TIMESTAMP WITH TIME ZONE NOT NULL,
     ativa               BOOLEAN                  DEFAULT TRUE,
@@ -147,13 +147,13 @@ CREATE TABLE campanhas
     alterado_por        VARCHAR(150)
 );
 
-CREATE INDEX idx_estoque_unidade_unidade ON estoques (id_unidade);
-CREATE INDEX idx_estoque_unidade_produto ON estoques (id_produto);
+CREATE INDEX IF NOT EXISTS idx_estoque_unidade_unidade ON estoques (id_unidade);
+CREATE INDEX IF NOT EXISTS idx_estoque_unidade_produto ON estoques (id_produto);
 
-CREATE INDEX idx_pedidos_usuario ON pedidos (id_usuario);
-CREATE INDEX idx_pedidos_unidade ON pedidos (id_unidade);
+CREATE INDEX IF NOT EXISTS idx_pedidos_usuario ON pedidos (id_usuario);
+CREATE INDEX IF NOT EXISTS idx_pedidos_unidade ON pedidos (id_unidade);
 
-CREATE INDEX idx_itens_pedido_pedido ON itens_pedido (id_pedido);
-CREATE INDEX idx_itens_pedido_produto ON itens_pedido (id_produto);
+CREATE INDEX IF NOT EXISTS idx_itens_pedido_pedido ON itens_pedido (id_pedido);
+CREATE INDEX IF NOT EXISTS idx_itens_pedido_produto ON itens_pedido (id_produto);
 
-CREATE INDEX idx_pagamentos_pedido ON pagamentos (id_pedido);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_pedido ON pagamentos (id_pedido);
