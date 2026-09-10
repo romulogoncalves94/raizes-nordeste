@@ -38,7 +38,7 @@ public class UsuarioEntity extends AuditoriaEntity {
     @Column(name = "EMAIL", nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(name = "SENHA", nullable = false)
+    @Column(name = "SENHA", nullable = false, length = 100)
     private String senha;
 
     @Enumerated(EnumType.STRING)
@@ -47,5 +47,8 @@ public class UsuarioEntity extends AuditoriaEntity {
 
     @Column(name = "ACEITE_LGPD", nullable = false)
     private Boolean aceiteLgpd;
+
+    @Column(name = "ACEITE_FIDELIDADE", nullable = false)
+    private Boolean aceiteFidelidade;
 
 }

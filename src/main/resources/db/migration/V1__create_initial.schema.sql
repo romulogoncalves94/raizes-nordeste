@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS usuarios
     nome              VARCHAR(150)        NOT NULL,
     cpf               VARCHAR(14) UNIQUE  NOT NULL,
     email             VARCHAR(150) UNIQUE NOT NULL,
-    senha             VARCHAR(255)        NOT NULL,
+    senha             VARCHAR(100)        NOT NULL,
     perfil            VARCHAR(30)         NOT NULL CHECK (perfil IN ('GERENTE', 'ATENDENTE', 'CLIENTE')),
     aceite_lgpd       BOOLEAN             NOT NULL DEFAULT FALSE,
     aceite_fidelidade BOOLEAN             NOT NULL DEFAULT FALSE,
