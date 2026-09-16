@@ -101,6 +101,10 @@ Authorization: Bearer <token>
 | `POST /api/usuarios` | Público (autocadastro) |
 | `GET /api/usuarios` (listagem paginada) | `GERENTE` ou `ATENDENTE` |
 | `DELETE /api/usuarios/{id}` | Somente `GERENTE` |
+| `POST /api/unidades` | Somente `GERENTE` |
+| `PUT /api/unidades/{id}` | Somente `GERENTE` |
+| `DELETE /api/unidades/{id}` | Somente `GERENTE` |
+| `GET /api/unidades`, `GET /api/unidades/{id}` | Qualquer usuário autenticado |
 | Demais endpoints | Requer usuário autenticado |
 
 As senhas são armazenadas com hash **BCrypt** (nunca em texto plano).
@@ -125,9 +129,9 @@ Todas as respostas de erro seguem o formato:
 
 ## Funcionalidades implementadas
 
-- [x] CRUD de Usuário (`/api/usuarios`), com paginação, validação e CPF único
+- [x] CRUD de Usuário (`/api/usuarios`), com paginação, validação, CPF e e-mail únicos
 - [x] Autenticação JWT + autorização por papel (`/api/auth/login`)
-- [ ] CRUD de Unidade
+- [x] CRUD de Unidade (`/api/unidades`), com paginação, validação e CNPJ único
 - [ ] CRUD de Produto
 - [ ] CRUD de Estoque + fluxo de controle de estoque por unidade (fluxo crítico do MVP)
 - [ ] CRUD de Pedido/ItemPedido (com filtro por `canalPedido`)

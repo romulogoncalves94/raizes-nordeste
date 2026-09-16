@@ -1,8 +1,11 @@
 package com.projeto.raizesnordeste.infrastructure.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.projeto.raizesnordeste.application.ports.IUnidadePort;
+import com.projeto.raizesnordeste.application.ports.IUnidadeRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioRepositoryPort;
+import com.projeto.raizesnordeste.application.services.UnidadeService;
 import com.projeto.raizesnordeste.application.services.UsuarioService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +22,11 @@ public class BeansConfig {
     @Bean
     public IUsuarioPort usuarioServicePort(IUsuarioRepositoryPort usuarioRepositoryPort, PasswordEncoder passwordEncoder) {
         return new UsuarioService(usuarioRepositoryPort, passwordEncoder);
+    }
+
+    @Bean
+    public IUnidadePort unidadeServicePort(IUnidadeRepositoryPort unidadeRepositoryPort) {
+        return new UnidadeService(unidadeRepositoryPort);
     }
 
 }
