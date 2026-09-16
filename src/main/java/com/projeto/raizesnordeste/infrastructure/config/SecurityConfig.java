@@ -72,6 +72,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/estoques").hasRole("GERENTE")
                         .requestMatchers(HttpMethod.GET, "/api/estoques", "/api/estoques/**").hasAnyRole("GERENTE", "ATENDENTE")
                         .requestMatchers(HttpMethod.DELETE, "/api/estoques/**").hasRole("GERENTE")
+                        // Pedidos
+                        .requestMatchers(HttpMethod.POST, "/api/pedidos").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/pedidos", "/api/pedidos/**").hasAnyRole("GERENTE", "ATENDENTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/pedidos/*/status").hasAnyRole("GERENTE", "ATENDENTE")
+                        .requestMatchers(HttpMethod.POST, "/api/pedidos/*/cancelar").hasAnyRole("GERENTE", "ATENDENTE")
                         // Fallback: qualquer outro endpoint exige apenas autenticação
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

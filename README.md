@@ -112,9 +112,16 @@ Authorization: Bearer <token>
 | `/api/estoques` | `POST` | Somente `GERENTE` |
 | `/api/estoques`, `/api/estoques/{id}`, `/api/estoques/saldo` | `GET` | `GERENTE` ou `ATENDENTE` |
 | `/api/estoques/{id}` | `DELETE` | Somente `GERENTE` |
+| `/api/pedidos` | `POST` | Qualquer usuário autenticado |
+| `/api/pedidos`, `/api/pedidos/{id}` | `GET` | `GERENTE` ou `ATENDENTE` |
+| `/api/pedidos/{id}/status` | `PUT` | `GERENTE` ou `ATENDENTE` |
+| `/api/pedidos/{id}/cancelar` | `POST` | `GERENTE` ou `ATENDENTE` |
 | Qualquer outro endpoint não listado acima | — | Requer apenas autenticação (fallback) |
 
-> Nota: a busca de usuário por id (`GET /api/usuarios/{id}`) hoje exige `GERENTE`/`ATENDENTE` — não existe ainda um endpoint de "meu perfil" para que um `CLIENTE` consulte os próprios dados sem essas roles. Ficará como item de backlog.
+> Notas de backlog:
+> - A busca de usuário por id (`GET /api/usuarios/{id}`) hoje exige `GERENTE`/`ATENDENTE` — não existe ainda um endpoint de "meu perfil" para que um `CLIENTE` consulte os próprios dados sem essas roles.
+> - O pedido é criado com `idUsuario` explícito no corpo da requisição (não derivado do token JWT) — ainda não há extração automática do usuário autenticado a partir do token para preencher esse campo.
+> - `GET /api/pedidos` hoje não filtra pedidos por dono (`CLIENTE` não consegue listar só os próprios pedidos) — está restrito a `GERENTE`/`ATENDENTE`.
 
 As senhas são armazenadas com hash **BCrypt** (nunca em texto plano).
 
@@ -161,6 +168,33 @@ Regras aplicadas:
 
 Consulte o fluxograma atualizado em `.claude/projeto/PROMPT.md` (seção "Fluxograma") para o desenho completo do fluxo, incluindo os casos de erro (404 unidade/produto/estoque inexistente, 409 saldo insuficiente).
 
+## Pedidos multicanal (`canalPedido`)
+
+```
+POST /api/pedidos
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "idUsuario": "uuid-do-usuario",
+  "idUnidade": "uuid-da-unidade",
+  "canalPedido": "TOTEM",
+  "itens": [
+    { "idProduto": "uuid-produto-1", "quantidade": 2 },
+    { "idProduto": "uuid-produto-2", "quantidade": 1 }
+  ]
+}
+```
+
+Regras aplicadas:
+- **`canalPedido`** aceita `APP`, `TOTEM`, `BALCAO`, `PICKUP` ou `WEB`, e é filtrável na listagem: `GET /api/pedidos?canalPedido=TOTEM`.
+- **`valorTotal` e `precoUnitario` de cada item são calculados no servidor** a partir do preço atual do produto (`Produto.preco`) — nunca confiam em valor enviado pelo cliente.
+- **Integração com Estoque (Sprint 4)**: ao criar o pedido, cada item gera uma movimentação de `SAIDA` no estoque da unidade (reaproveita `EstoqueService.movimentar`), com todas as garantias já existentes (lock pessimista, 409 se saldo insuficiente, 404 se não houver registro de estoque para o par unidade/produto).
+- **Status inicial**: todo pedido nasce como `AGUARDANDO_PAGAMENTO` (o fluxo de pagamento entra no Sprint 6).
+- **Atualização de status**: `PUT /api/pedidos/{id}/status`, bloqueada se o pedido já estiver `ENTREGUE` ou `CANCELADO`.
+- **Cancelamento**: `POST /api/pedidos/{id}/cancelar` estorna (`ENTRADA`) o estoque de cada item e marca o pedido como `CANCELADO`; também bloqueado se já finalizado.
+- Itens do pedido não têm endpoints próprios — são geridos como parte do agregado `Pedido` (criados junto no `POST`, sem CRUD independente).
+
 ## Funcionalidades implementadas
 
 - [x] CRUD de Usuário (`/api/usuarios`), com paginação, validação, CPF e e-mail únicos
@@ -168,7 +202,7 @@ Consulte o fluxograma atualizado em `.claude/projeto/PROMPT.md` (seção "Fluxog
 - [x] CRUD de Unidade (`/api/unidades`), com paginação, validação e CNPJ único
 - [x] CRUD de Produto (`/api/produtos`), com paginação, validação de preço (> 0) e **categorização** (útil para cardápios)
 - [x] CRUD de Estoque + fluxo crítico do MVP: movimentação de estoque por unidade com lock pessimista e auditoria automática (`/api/estoques`)
-- [ ] CRUD de Pedido/ItemPedido (com filtro por `canalPedido`)
+- [x] CRUD de Pedido/ItemPedido (`/api/pedidos`), com filtro por `canalPedido`, cálculo de valor total no servidor, integração com Estoque (débito/estorno) e atualização de status
 - [ ] Pagamento (mock)
 - [ ] Programa de Fidelidade
 - [ ] Campanhas e Promoções
