@@ -32,6 +32,11 @@ public class UsuarioRepositoryAdapter implements IUsuarioRepositoryPort {
     }
 
     @Override
+    public Optional<Usuario> findByEmail(String email) {
+        return repository.findByEmail(email).map(mapper::toDomain);
+    }
+
+    @Override
     public Page<Usuario> findAll(Pageable pageable) {
         return repository.findAll(pageable)
                 .map(mapper::toDomain);
@@ -50,6 +55,13 @@ public class UsuarioRepositoryAdapter implements IUsuarioRepositoryPort {
     @Override
     public boolean existsByCpf(String cpf, UUID id) {
         return repository.findByCpf(cpf)
+                .filter(usuario -> isNull(id) || !usuario.getId().equals(id))
+                .isPresent();
+    }
+
+    @Override
+    public boolean existsByEmail(String email, UUID id) {
+        return repository.findByEmail(email)
                 .filter(usuario -> isNull(id) || !usuario.getId().equals(id))
                 .isPresent();
     }

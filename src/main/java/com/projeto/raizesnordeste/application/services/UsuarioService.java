@@ -8,6 +8,7 @@ import com.projeto.raizesnordeste.presentation.exceptions.ResourceNotFoundExcept
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
@@ -17,9 +18,11 @@ import static java.util.Objects.nonNull;
 public class UsuarioService implements IUsuarioPort {
 
     private final IUsuarioRepositoryPort repositoryPort;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(IUsuarioRepositoryPort repositoryPort) {
+    public UsuarioService(IUsuarioRepositoryPort repositoryPort, PasswordEncoder passwordEncoder) {
         this.repositoryPort = repositoryPort;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -30,14 +33,24 @@ public class UsuarioService implements IUsuarioPort {
         }
 
         validarCpfDuplicado(usuario.getCpf());
+        validarEmailDuplicado(usuario.getEmail());
 
-        return repositoryPort.save(usuario); //TODO: Encriptar a senha
+        usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
+
+        return repositoryPort.save(usuario);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Usuario findById(UUID id) {
         return repositoryPort.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Usuario findByEmail(String email) {
+        return repositoryPort.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
     }
 
@@ -56,10 +69,18 @@ public class UsuarioService implements IUsuarioPort {
 
     @Override
     @Transactional
-    public Usuario update(UUID id, Usuario usuario) {
+    public Usuario update(UUID id, Usuario usuario, boolean senhaAlterada) {
 
         if (nonNull(usuario.getCpf()) && repositoryPort.existsByCpf(usuario.getCpf(), id)) {
             throw new BusinessRuleException("CPF já cadastrado: " + usuario.getCpf());
+        }
+
+        if (nonNull(usuario.getEmail()) && repositoryPort.existsByEmail(usuario.getEmail(), id)) {
+            throw new BusinessRuleException("Email já cadastrado: " + usuario.getEmail());
+        }
+
+        if (senhaAlterada) {
+            usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
         }
 
 //        if (Boolean.FALSE.equals(usuarioExistente.getAceiteLgpd())) {
@@ -79,6 +100,12 @@ public class UsuarioService implements IUsuarioPort {
     private void validarCpfDuplicado(String cpf) {
         if (repositoryPort.existsByCpf(cpf, null)) {
             throw new BusinessRuleException("CPF já cadastrado: " + cpf);
+        }
+    }
+
+    private void validarEmailDuplicado(String email) {
+        if (repositoryPort.existsByEmail(email, null)) {
+            throw new BusinessRuleException("Email já cadastrado: " + email);
         }
     }
 
@@ -119,4 +146,3 @@ public class UsuarioService implements IUsuarioPort {
 //        return usuario.charAt(0) + "***" + usuario.charAt(usuario.length() - 1) + "@" + dominio;
 //    }
 }
-

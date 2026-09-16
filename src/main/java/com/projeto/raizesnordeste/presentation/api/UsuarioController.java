@@ -45,7 +45,8 @@ public class UsuarioController implements IUsuarioController {
     public ResponseEntity<UsuarioResponse> update(UUID id, UpdateUsuarioRequest request) {
         Usuario usuario = useCase.findById(id);
         Usuario usuarioAtualizado = mapper.updateFromRequest(request, usuario);
-        return ResponseEntity.ok(UsuarioResponse.from(useCase.update(id, usuarioAtualizado)));
+        boolean senhaAlterada = request.senha() != null;
+        return ResponseEntity.ok(UsuarioResponse.from(useCase.update(id, usuarioAtualizado, senhaAlterada)));
     }
 
     @Override
