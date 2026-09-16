@@ -1,7 +1,10 @@
 package com.projeto.raizesnordeste.infrastructure.persistence.entities;
 
+import com.projeto.raizesnordeste.domain.enums.CategoriaProdutoEnum;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,5 +35,9 @@ public class ProdutoEntity extends AuditoriaEntity {
 
     @Column(name = "PRECO", nullable = false, length = 10, scale = 2)
     private BigDecimal preco;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "CATEGORIA", nullable = false, length = 30)
+    private CategoriaProdutoEnum categoria;
 
 }

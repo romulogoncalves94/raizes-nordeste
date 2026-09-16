@@ -96,15 +96,21 @@ Authorization: Bearer <token>
 
 ### Regras de autorização já aplicadas
 
-| Endpoint | Regra |
-|---|---|
-| `POST /api/usuarios` | Público (autocadastro) |
-| `GET /api/usuarios` (listagem paginada) | `GERENTE` ou `ATENDENTE` |
-| `DELETE /api/usuarios/{id}` | Somente `GERENTE` |
-| `POST /api/unidades` | Somente `GERENTE` |
-| `PUT /api/unidades/{id}` | Somente `GERENTE` |
-| `DELETE /api/unidades/{id}` | Somente `GERENTE` |
-| `GET /api/unidades`, `GET /api/unidades/{id}` | Qualquer usuário autenticado |
+| Recurso | Método | Regra |
+|---|---|---|
+| `/api/usuarios` | `POST` | Público (autocadastro) |
+| `/api/usuarios`, `/api/usuarios/{id}` | `GET` | `GERENTE` ou `ATENDENTE` |
+| `/api/usuarios/{id}` | `PUT` | Qualquer usuário autenticado |
+| `/api/usuarios/{id}` | `DELETE` | Somente `GERENTE` |
+| `/api/unidades` | `POST` | Somente `GERENTE` |
+| `/api/unidades`, `/api/unidades/{id}` | `GET` | Qualquer usuário autenticado |
+| `/api/unidades/{id}` | `PUT`, `DELETE` | Somente `GERENTE` |
+| `/api/produtos` | `POST` | `GERENTE` ou `ATENDENTE` |
+| `/api/produtos`, `/api/produtos/{id}` | `GET` | Qualquer usuário autenticado |
+| `/api/produtos/{id}` | `PUT`, `DELETE` | `GERENTE` ou `ATENDENTE` |
+| Qualquer outro endpoint não listado acima | — | Requer apenas autenticação (fallback) |
+
+> Nota: a busca de usuário por id (`GET /api/usuarios/{id}`) hoje exige `GERENTE`/`ATENDENTE` — não existe ainda um endpoint de "meu perfil" para que um `CLIENTE` consulte os próprios dados sem essas roles. Ficará como item de backlog.
 | Demais endpoints | Requer usuário autenticado |
 
 As senhas são armazenadas com hash **BCrypt** (nunca em texto plano).
@@ -132,7 +138,7 @@ Todas as respostas de erro seguem o formato:
 - [x] CRUD de Usuário (`/api/usuarios`), com paginação, validação, CPF e e-mail únicos
 - [x] Autenticação JWT + autorização por papel (`/api/auth/login`)
 - [x] CRUD de Unidade (`/api/unidades`), com paginação, validação e CNPJ único
-- [ ] CRUD de Produto
+- [x] CRUD de Produto (`/api/produtos`), com paginação, validação de preço (> 0) e **categorização** (útil para cardápios)
 - [ ] CRUD de Estoque + fluxo de controle de estoque por unidade (fluxo crítico do MVP)
 - [ ] CRUD de Pedido/ItemPedido (com filtro por `canalPedido`)
 - [ ] Pagamento (mock)

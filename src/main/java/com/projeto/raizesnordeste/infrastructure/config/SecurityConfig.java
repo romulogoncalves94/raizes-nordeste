@@ -52,12 +52,22 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Usuários
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios", "/api/usuarios/**").hasAnyRole("GERENTE", "ATENDENTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/usuarios/**").hasRole("GERENTE")
-                        .requestMatchers(HttpMethod.GET, "/api/usuarios").hasAnyRole("GERENTE", "ATENDENTE")
+                        // Unidades
                         .requestMatchers(HttpMethod.POST, "/api/unidades").hasRole("GERENTE")
+                        .requestMatchers(HttpMethod.GET, "/api/unidades", "/api/unidades/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/unidades/**").hasRole("GERENTE")
                         .requestMatchers(HttpMethod.DELETE, "/api/unidades/**").hasRole("GERENTE")
+                        // Produtos
+                        .requestMatchers(HttpMethod.POST, "/api/produtos").hasAnyRole("GERENTE", "ATENDENTE")
+                        .requestMatchers(HttpMethod.GET, "/api/produtos", "/api/produtos/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/produtos/**").hasAnyRole("GERENTE", "ATENDENTE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/produtos/**").hasAnyRole("GERENTE", "ATENDENTE")
+                        // Fallback: qualquer outro endpoint exige apenas autenticação
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
