@@ -108,10 +108,13 @@ Authorization: Bearer <token>
 | `/api/produtos` | `POST` | `GERENTE` ou `ATENDENTE` |
 | `/api/produtos`, `/api/produtos/{id}` | `GET` | Qualquer usuário autenticado |
 | `/api/produtos/{id}` | `PUT`, `DELETE` | `GERENTE` ou `ATENDENTE` |
+| `/api/estoques/movimentar` | `POST` | `GERENTE` ou `ATENDENTE` |
+| `/api/estoques` | `POST` | Somente `GERENTE` |
+| `/api/estoques`, `/api/estoques/{id}`, `/api/estoques/saldo` | `GET` | `GERENTE` ou `ATENDENTE` |
+| `/api/estoques/{id}` | `DELETE` | Somente `GERENTE` |
 | Qualquer outro endpoint não listado acima | — | Requer apenas autenticação (fallback) |
 
 > Nota: a busca de usuário por id (`GET /api/usuarios/{id}`) hoje exige `GERENTE`/`ATENDENTE` — não existe ainda um endpoint de "meu perfil" para que um `CLIENTE` consulte os próprios dados sem essas roles. Ficará como item de backlog.
-| Demais endpoints | Requer usuário autenticado |
 
 As senhas são armazenadas com hash **BCrypt** (nunca em texto plano).
 
@@ -133,13 +136,38 @@ Todas as respostas de erro seguem o formato:
 
 `details` é preenchido com uma entrada por campo em erros de validação (400).
 
+## Fluxo crítico do MVP: Controle de Estoque por Unidade
+
+Fluxo de negócio obrigatório da Roteiro. Um `GERENTE` ou `ATENDENTE` registra a movimentação (`ENTRADA` ou `SAÍDA`) de um produto em uma unidade:
+
+```
+POST /api/estoques/movimentar
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "idUnidade": "uuid-da-unidade",
+  "idProduto": "uuid-do-produto",
+  "quantidade": 10,
+  "tipo": "SAIDA"
+}
+```
+
+Regras aplicadas:
+- **Consistência sob concorrência**: a leitura do saldo antes da atualização usa *lock pessimista* (`PESSIMISTIC_WRITE`) — duas movimentações simultâneas no mesmo par unidade/produto nunca corrompem o saldo.
+- **Validação de saldo**: uma saída (`SAIDA`) maior que o saldo disponível retorna **409 Conflict** (não altera o estoque).
+- **Auditoria automática**: toda entidade (`Usuario`, `Unidade`, `Produto`, `Estoque`, etc.) grava automaticamente `criadoPor`/`alteradoPor` com o e-mail do usuário autenticado (via Spring Data JPA Auditing) e `criadoEm`/`alteradoEm` com o timestamp — não é preciso fazer isso manualmente em cada service.
+- **Consulta de saldo**: `GET /api/estoques/saldo?idUnidade=...&idProduto=...` retorna o saldo atual de um produto em uma unidade específica.
+
+Consulte o fluxograma atualizado em `.claude/projeto/PROMPT.md` (seção "Fluxograma") para o desenho completo do fluxo, incluindo os casos de erro (404 unidade/produto/estoque inexistente, 409 saldo insuficiente).
+
 ## Funcionalidades implementadas
 
 - [x] CRUD de Usuário (`/api/usuarios`), com paginação, validação, CPF e e-mail únicos
 - [x] Autenticação JWT + autorização por papel (`/api/auth/login`)
 - [x] CRUD de Unidade (`/api/unidades`), com paginação, validação e CNPJ único
 - [x] CRUD de Produto (`/api/produtos`), com paginação, validação de preço (> 0) e **categorização** (útil para cardápios)
-- [ ] CRUD de Estoque + fluxo de controle de estoque por unidade (fluxo crítico do MVP)
+- [x] CRUD de Estoque + fluxo crítico do MVP: movimentação de estoque por unidade com lock pessimista e auditoria automática (`/api/estoques`)
 - [ ] CRUD de Pedido/ItemPedido (com filtro por `canalPedido`)
 - [ ] Pagamento (mock)
 - [ ] Programa de Fidelidade
