@@ -28,7 +28,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Entity
 @Table(name = "pagamentos")
-public class PagamentoEntity {
+public class PagamentoEntity extends AuditoriaEntity {
 
     @Id
     @Column(name = "ID")

@@ -15,6 +15,7 @@ import static java.time.LocalDateTime.now;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.PAYMENT_REQUIRED;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @RestControllerAdvice
@@ -66,6 +67,18 @@ public class GlobalExceptionHandler {
                 .status(UNAUTHORIZED.value())
                 .error(UNAUTHORIZED.getReasonPhrase())
                 .message("Email ou senha inválidos")
+                .path(request.getRequestURI())
+                .build());
+    }
+
+    @ExceptionHandler(PaymentRequiredException.class)
+    ResponseEntity<StandardError> handlePaymentRequiredException(final PaymentRequiredException ex, final HttpServletRequest request) {
+        return ResponseEntity.status(PAYMENT_REQUIRED).body(StandardError.builder()
+                .requestId(UUID.randomUUID().toString())
+                .timestamp(now())
+                .status(PAYMENT_REQUIRED.value())
+                .error(PAYMENT_REQUIRED.getReasonPhrase())
+                .message(ex.getMessage())
                 .path(request.getRequestURI())
                 .build());
     }

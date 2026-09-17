@@ -3,6 +3,9 @@ package com.projeto.raizesnordeste.infrastructure.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.projeto.raizesnordeste.application.ports.IEstoquePort;
 import com.projeto.raizesnordeste.application.ports.IEstoqueRepositoryPort;
+import com.projeto.raizesnordeste.application.ports.IPagamentoGatewayPort;
+import com.projeto.raizesnordeste.application.ports.IPagamentoPort;
+import com.projeto.raizesnordeste.application.ports.IPagamentoRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IPedidoPort;
 import com.projeto.raizesnordeste.application.ports.IPedidoRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IProdutoPort;
@@ -12,6 +15,7 @@ import com.projeto.raizesnordeste.application.ports.IUnidadeRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioRepositoryPort;
 import com.projeto.raizesnordeste.application.services.EstoqueService;
+import com.projeto.raizesnordeste.application.services.PagamentoService;
 import com.projeto.raizesnordeste.application.services.PedidoService;
 import com.projeto.raizesnordeste.application.services.ProdutoService;
 import com.projeto.raizesnordeste.application.services.UnidadeService;
@@ -52,6 +56,12 @@ public class BeansConfig {
     public IPedidoPort pedidoServicePort(IPedidoRepositoryPort pedidoRepositoryPort, IUsuarioPort usuarioPort,
                                           IUnidadePort unidadePort, IProdutoPort produtoPort, IEstoquePort estoquePort) {
         return new PedidoService(pedidoRepositoryPort, usuarioPort, unidadePort, produtoPort, estoquePort);
+    }
+
+    @Bean
+    public IPagamentoPort pagamentoServicePort(IPagamentoRepositoryPort pagamentoRepositoryPort,
+                                                IPagamentoGatewayPort pagamentoGatewayPort, IPedidoPort pedidoPort) {
+        return new PagamentoService(pagamentoRepositoryPort, pagamentoGatewayPort, pedidoPort);
     }
 
 }

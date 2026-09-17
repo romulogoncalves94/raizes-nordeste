@@ -116,6 +116,8 @@ Authorization: Bearer <token>
 | `/api/pedidos`, `/api/pedidos/{id}` | `GET` | `GERENTE` ou `ATENDENTE` |
 | `/api/pedidos/{id}/status` | `PUT` | `GERENTE` ou `ATENDENTE` |
 | `/api/pedidos/{id}/cancelar` | `POST` | `GERENTE` ou `ATENDENTE` |
+| `/api/pagamentos` | `POST` | Qualquer usuário autenticado |
+| `/api/pagamentos/**` | `GET` | `GERENTE` ou `ATENDENTE` |
 | Qualquer outro endpoint não listado acima | — | Requer apenas autenticação (fallback) |
 
 > Notas de backlog:
@@ -195,6 +197,31 @@ Regras aplicadas:
 - **Cancelamento**: `POST /api/pedidos/{id}/cancelar` estorna (`ENTRADA`) o estoque de cada item e marca o pedido como `CANCELADO`; também bloqueado se já finalizado.
 - Itens do pedido não têm endpoints próprios — são geridos como parte do agregado `Pedido` (criados junto no `POST`, sem CRUD independente).
 
+## Pagamento (mock)
+
+O gateway de pagamento é simulado (`MockPagamentoGatewayAdapter`, camada de infraestrutura — corresponde ao "Serviço Externo: Mock Pagamento" do diagrama de arquitetura em `.claude/projeto/PROMPT.md`). Para permitir testar os dois cenários de forma determinística (sem depender de aleatoriedade), o campo opcional `simularFalha` força a recusa:
+
+```
+POST /api/pagamentos
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "idPedido": "uuid-do-pedido",
+  "formaPagamento": "PIX",
+  "simularFalha": false
+}
+```
+
+**Cenário de sucesso** (`simularFalha: false` ou omitido) → `201 Created`, pagamento gravado com `statusPagamento: APROVADO`, e o pedido avança automaticamente para `COZINHA`.
+
+**Cenário de recusa** (`simularFalha: true`) → `402 Payment Required`. O pagamento **é registrado** com `statusPagamento: RECUSADO` (auditoria da tentativa), o pedido é automaticamente cancelado (reaproveita `PedidoService.cancelar`) e o estoque de cada item é estornado — tudo na mesma transação, sem perder o registro do pagamento recusado (`@Transactional(noRollbackFor = PaymentRequiredException.class)`).
+
+Outras regras:
+- Só é possível pagar um pedido com status `AGUARDANDO_PAGAMENTO` (senão, `409 Conflict`).
+- Um pedido só pode ter um pagamento (`409 Conflict` em tentativa duplicada) — reflete a relação `1:1` `Pedido`↔`Pagamento` do DER.
+- `GET /api/pagamentos/pedido/{idPedido}` consulta o pagamento de um pedido específico.
+
 ## Funcionalidades implementadas
 
 - [x] CRUD de Usuário (`/api/usuarios`), com paginação, validação, CPF e e-mail únicos
@@ -203,7 +230,7 @@ Regras aplicadas:
 - [x] CRUD de Produto (`/api/produtos`), com paginação, validação de preço (> 0) e **categorização** (útil para cardápios)
 - [x] CRUD de Estoque + fluxo crítico do MVP: movimentação de estoque por unidade com lock pessimista e auditoria automática (`/api/estoques`)
 - [x] CRUD de Pedido/ItemPedido (`/api/pedidos`), com filtro por `canalPedido`, cálculo de valor total no servidor, integração com Estoque (débito/estorno) e atualização de status
-- [ ] Pagamento (mock)
+- [x] Pagamento mock (`/api/pagamentos`), com cenários de aprovação e recusa determinísticos, integração com Pedido (avança para COZINHA ou cancela) e auditoria da tentativa recusada
 - [ ] Programa de Fidelidade
 - [ ] Campanhas e Promoções
 - [ ] Testes automatizados
