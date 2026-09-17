@@ -15,6 +15,8 @@ public interface PedidoMapper {
     @Mapping(source = "usuario.nome", target = "nomeUsuario")
     @Mapping(source = "unidade.id", target = "idUnidade")
     @Mapping(source = "unidade.razaoSocial", target = "nomeUnidade")
+    @Mapping(source = "campanhaAplicada.id", target = "idCampanhaAplicada")
+    @Mapping(source = "campanhaAplicada.nome", target = "nomeCampanhaAplicada")
     Pedido toDomain(PedidoEntity entity);
 
 }

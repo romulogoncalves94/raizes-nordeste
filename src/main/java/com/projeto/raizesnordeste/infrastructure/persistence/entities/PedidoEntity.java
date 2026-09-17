@@ -54,11 +54,24 @@ public class PedidoEntity extends AuditoriaEntity {
     @Column(name = "STATUS", nullable = false, length = 30)
     private StatusPedidoEnum status;
 
+    @Column(name = "VALOR_BRUTO", nullable = false, precision = 10, scale = 2)
+    private BigDecimal valorBruto;
+
+    @Column(name = "VALOR_DESCONTO_PONTOS", nullable = false, precision = 10, scale = 2)
+    private BigDecimal valorDescontoPontos;
+
+    @Column(name = "VALOR_DESCONTO_CAMPANHA", nullable = false, precision = 10, scale = 2)
+    private BigDecimal valorDescontoCampanha;
+
     @Column(name = "VALOR_TOTAL", nullable = false, precision = 10, scale = 2)
     private BigDecimal valorTotal;
 
     @Column(name = "PONTOS_RESGATADOS", nullable = false)
     private Integer pontosResgatados;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ID_CAMPANHA_APLICADA")
+    private CampanhasEntity campanhaAplicada;
 
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemPedidoEntity> itens = new ArrayList<>();

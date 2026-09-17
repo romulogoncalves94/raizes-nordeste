@@ -119,6 +119,9 @@ Authorization: Bearer <token>
 | `/api/pagamentos` | `POST` | Qualquer usuário autenticado |
 | `/api/pagamentos/**` | `GET` | `GERENTE` ou `ATENDENTE` |
 | `/api/fidelidade/**` | `GET` | Qualquer usuário autenticado (UC7 do diagrama de casos de uso é atribuído ao Cliente) |
+| `/api/campanhas` | `POST` | Somente `GERENTE` |
+| `/api/campanhas`, `/api/campanhas/{id}`, `/api/campanhas/vigentes` | `GET` | Qualquer usuário autenticado |
+| `/api/campanhas/{id}` | `PUT`, `DELETE` | Somente `GERENTE` |
 | Qualquer outro endpoint não listado acima | — | Requer apenas autenticação (fallback) |
 
 > Notas de backlog:
@@ -192,12 +195,28 @@ Content-Type: application/json
 
 Regras aplicadas:
 - **`canalPedido`** aceita `APP`, `TOTEM`, `BALCAO`, `PICKUP` ou `WEB`, e é filtrável na listagem: `GET /api/pedidos?canalPedido=TOTEM`.
-- **`valorTotal` e `precoUnitario` de cada item são calculados no servidor** a partir do preço atual do produto (`Produto.preco`) — nunca confiam em valor enviado pelo cliente.
+- **`precoUnitario` de cada item é calculado no servidor** a partir do preço atual do produto (`Produto.preco`) — nunca confia em valor enviado pelo cliente.
 - **Integração com Estoque (Sprint 4)**: ao criar o pedido, cada item gera uma movimentação de `SAIDA` no estoque da unidade (reaproveita `EstoqueService.movimentar`), com todas as garantias já existentes (lock pessimista, 409 se saldo insuficiente, 404 se não houver registro de estoque para o par unidade/produto).
-- **`pontosResgatados` (opcional, integração com Fidelidade — Sprint 7)**: converte pontos em desconto sobre `valorTotal` (100 pontos = R$1,00) e debita o saldo do usuário na mesma transação. Retorna 409 se o desconto for maior que o valor do pedido, ou 409 se o saldo de pontos for insuficiente. Ver seção "Programa de Fidelidade" abaixo.
+- **`pontosResgatados` (opcional, integração com Fidelidade — Sprint 7)**: converte pontos em desconto sobre o valor do pedido (100 pontos = R$1,00) e debita o saldo do usuário na mesma transação. Retorna 409 se o desconto for maior que o valor do pedido, ou 409 se o saldo de pontos for insuficiente. Ver seção "Programa de Fidelidade" abaixo.
+- **Desconto de campanha (automático, integração com Campanhas — Sprint 8)**: se houver campanha vigente (`ativa=true` e dentro do período), o sistema aplica automaticamente o maior `percentualDesconto` disponível **sobre o valor já com desconto de pontos**. Não é algo que o cliente escolhe — é aplicado transparentemente na criação do pedido. Ver seção "Campanhas e Promoções" abaixo.
+
+### Modelo financeiro do pedido
+
+Cada etapa do cálculo é **persistida separadamente** (não só o resultado final), para rastreabilidade — dado assim que um pedido é auditado meses depois, sem depender do estado atual (mutável) de pontos/campanhas:
+
+| Campo | Significado |
+|---|---|
+| `valorBruto` | Soma dos itens, sem nenhum desconto |
+| `valorDescontoPontos` | Valor em R$ abatido pelo resgate de pontos |
+| `idCampanhaAplicada` | Campanha vigente aplicada no momento da criação (nullable) |
+| `valorDescontoCampanha` | Valor em R$ abatido pela campanha |
+| `valorTotal` | `valorBruto - valorDescontoPontos - valorDescontoCampanha` — é isso que o Pagamento (Sprint 6) cobra |
+
+Ordem de cálculo: `valorBruto` → desconto de pontos (fixo, em R$) → desconto de campanha (percentual sobre o restante) → `valorTotal`.
+
 - **Status inicial**: todo pedido nasce como `AGUARDANDO_PAGAMENTO`.
 - **Atualização de status**: `PUT /api/pedidos/{id}/status`, bloqueada se o pedido já estiver `ENTREGUE` ou `CANCELADO`.
-- **Cancelamento**: `POST /api/pedidos/{id}/cancelar` estorna (`ENTRADA`) o estoque de cada item, **estorna os pontos de fidelidade resgatados** (se houver) e marca o pedido como `CANCELADO`; também bloqueado se já finalizado.
+- **Cancelamento**: `POST /api/pedidos/{id}/cancelar` estorna (`ENTRADA`) o estoque de cada item, **estorna os pontos de fidelidade resgatados** (se houver) e marca o pedido como `CANCELADO`; também bloqueado se já finalizado. *O desconto de campanha não precisa de estorno — é só um percentual aplicado ao valor, não debita nenhum saldo separado.*
 - Itens do pedido não têm endpoints próprios — são geridos como parte do agregado `Pedido` (criados junto no `POST`, sem CRUD independente).
 
 ## Pagamento (mock)
@@ -239,6 +258,30 @@ Consultas:
 - `GET /api/fidelidade/{idUsuario}` — saldo atual e dados do programa.
 - `GET /api/fidelidade/{idUsuario}/historico` — histórico paginado de acúmulos e resgates.
 
+## Campanhas e Promoções
+
+CRUD completo restrito a `GERENTE` (leitura liberada a qualquer autenticado):
+
+```
+POST /api/campanhas
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "nome": "Semana do Nordeste",
+  "percentualDesconto": 10.00,
+  "dataInicio": "2026-09-01T00:00:00",
+  "dataFim": "2026-09-30T23:59:59",
+  "ativa": true
+}
+```
+
+Regras:
+- **Vigência**: `dataFim` deve ser posterior a `dataInicio` (400/409 caso contrário). Uma campanha só é considerada "vigente" quando `ativa=true` **e** o momento atual está entre `dataInicio` e `dataFim` — `ativa` sozinho não basta.
+- `GET /api/campanhas/vigentes` — lista as campanhas vigentes agora, ordenadas pelo maior desconto.
+- **Aplicação automática no Pedido**: ao criar um pedido, o sistema busca a campanha vigente com o **maior** `percentualDesconto` e aplica automaticamente (não é escolha do cliente) — ver seção "Pedidos multicanal" acima para a ordem de aplicação junto ao desconto de pontos.
+- `PedidoResponse` expõe `idCampanhaAplicada` e `valorDescontoCampanha` (ambos persistidos no pedido — migration `V4` — não apenas calculados em memória) e `nomeCampanhaAplicada` (derivado por `JOIN` a partir de `idCampanhaAplicada` na leitura, nunca persistido — evita duplicar dado da campanha no pedido).
+
 ## Funcionalidades implementadas
 
 - [x] CRUD de Usuário (`/api/usuarios`), com paginação, validação, CPF e e-mail únicos
@@ -248,8 +291,8 @@ Consultas:
 - [x] CRUD de Estoque + fluxo crítico do MVP: movimentação de estoque por unidade com lock pessimista e auditoria automática (`/api/estoques`)
 - [x] CRUD de Pedido/ItemPedido (`/api/pedidos`), com filtro por `canalPedido`, cálculo de valor total no servidor, integração com Estoque (débito/estorno) e atualização de status
 - [x] Pagamento mock (`/api/pagamentos`), com cenários de aprovação e recusa determinísticos, integração com Pedido (avança para COZINHA ou cancela) e auditoria da tentativa recusada
-- [x] Programa de Fidelidade (`/api/fidelidade`), com adesão automática no cadastro/atualização de usuário, acúmulo automático de pontos em pedidos entregues e resgate manual
-- [ ] Campanhas e Promoções
+- [x] Programa de Fidelidade (`/api/fidelidade`), com adesão automática no cadastro/atualização de usuário, acúmulo automático de pontos em pedidos entregues e resgate como desconto na criação do pedido
+- [x] Campanhas e Promoções (`/api/campanhas`), com CRUD restrito a `GERENTE`, regra de vigência e aplicação automática de desconto percentual em pedidos (empilhado com o desconto de pontos)
 - [ ] Testes automatizados
 - [ ] Coleção Postman/Insomnia
 

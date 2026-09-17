@@ -16,8 +16,13 @@ public record PedidoResponse(
         String nomeUnidade,
         CanalPedidoEnum canalPedido,
         StatusPedidoEnum status,
-        BigDecimal valorTotal,
+        BigDecimal valorBruto,
         Integer pontosResgatados,
+        BigDecimal valorDescontoPontos,
+        UUID idCampanhaAplicada,
+        String nomeCampanhaAplicada,
+        BigDecimal valorDescontoCampanha,
+        BigDecimal valorTotal,
         List<ItemPedidoResponse> itens
 ) {
     public static PedidoResponse from(Pedido pedido) {
@@ -29,8 +34,13 @@ public record PedidoResponse(
                 pedido.getNomeUnidade(),
                 pedido.getCanalPedido(),
                 pedido.getStatus(),
-                pedido.getValorTotal(),
+                pedido.getValorBruto(),
                 pedido.getPontosResgatados(),
+                pedido.getValorDescontoPontos(),
+                pedido.getIdCampanhaAplicada(),
+                pedido.getNomeCampanhaAplicada(),
+                pedido.getValorDescontoCampanha(),
+                pedido.getValorTotal(),
                 pedido.getItens().stream().map(ItemPedidoResponse::from).toList()
         );
     }

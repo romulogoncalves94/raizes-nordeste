@@ -1,6 +1,8 @@
 package com.projeto.raizesnordeste.infrastructure.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.projeto.raizesnordeste.application.ports.ICampanhaPort;
+import com.projeto.raizesnordeste.application.ports.ICampanhaRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IEstoquePort;
 import com.projeto.raizesnordeste.application.ports.IEstoqueRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IHistoricoPontosRepositoryPort;
@@ -17,6 +19,7 @@ import com.projeto.raizesnordeste.application.ports.IUnidadePort;
 import com.projeto.raizesnordeste.application.ports.IUnidadeRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioRepositoryPort;
+import com.projeto.raizesnordeste.application.services.CampanhaService;
 import com.projeto.raizesnordeste.application.services.EstoqueService;
 import com.projeto.raizesnordeste.application.services.FidelidadeService;
 import com.projeto.raizesnordeste.application.services.PagamentoService;
@@ -64,10 +67,15 @@ public class BeansConfig {
     }
 
     @Bean
+    public ICampanhaPort campanhaServicePort(ICampanhaRepositoryPort campanhaRepositoryPort) {
+        return new CampanhaService(campanhaRepositoryPort);
+    }
+
+    @Bean
     public IPedidoPort pedidoServicePort(IPedidoRepositoryPort pedidoRepositoryPort, IUsuarioPort usuarioPort,
                                           IUnidadePort unidadePort, IProdutoPort produtoPort, IEstoquePort estoquePort,
-                                          IProgramaFidelidadePort programaFidelidadePort) {
-        return new PedidoService(pedidoRepositoryPort, usuarioPort, unidadePort, produtoPort, estoquePort, programaFidelidadePort);
+                                          IProgramaFidelidadePort programaFidelidadePort, ICampanhaPort campanhaPort) {
+        return new PedidoService(pedidoRepositoryPort, usuarioPort, unidadePort, produtoPort, estoquePort, programaFidelidadePort, campanhaPort);
     }
 
     @Bean

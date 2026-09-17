@@ -82,6 +82,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/pagamentos/**").hasAnyRole("GERENTE", "ATENDENTE")
                         // Fidelidade (UC7 do diagrama de casos de uso é atribuído ao Cliente)
                         .requestMatchers("/api/fidelidade/**").authenticated()
+                        // Campanhas
+                        .requestMatchers(HttpMethod.POST, "/api/campanhas").hasRole("GERENTE")
+                        .requestMatchers(HttpMethod.GET, "/api/campanhas", "/api/campanhas/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/campanhas/**").hasRole("GERENTE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/campanhas/**").hasRole("GERENTE")
                         // Fallback: qualquer outro endpoint exige apenas autenticação
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

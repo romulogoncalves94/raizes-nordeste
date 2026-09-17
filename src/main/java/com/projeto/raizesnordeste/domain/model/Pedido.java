@@ -16,9 +16,14 @@ public class Pedido {
     private String nomeUnidade;
     private CanalPedidoEnum canalPedido;
     private StatusPedidoEnum status;
+    private BigDecimal valorBruto;
+    private BigDecimal valorDescontoPontos;
+    private BigDecimal valorDescontoCampanha;
     private BigDecimal valorTotal;
     private List<ItemPedido> itens = new ArrayList<>();
     private Integer pontosResgatados;
+    private UUID idCampanhaAplicada;
+    private String nomeCampanhaAplicada;
 
     public Pedido() {
     }
@@ -92,6 +97,30 @@ public class Pedido {
         this.status = status;
     }
 
+    public BigDecimal getValorBruto() {
+        return valorBruto;
+    }
+
+    public void setValorBruto(BigDecimal valorBruto) {
+        this.valorBruto = valorBruto;
+    }
+
+    public BigDecimal getValorDescontoPontos() {
+        return valorDescontoPontos;
+    }
+
+    public void setValorDescontoPontos(BigDecimal valorDescontoPontos) {
+        this.valorDescontoPontos = valorDescontoPontos;
+    }
+
+    public BigDecimal getValorDescontoCampanha() {
+        return valorDescontoCampanha;
+    }
+
+    public void setValorDescontoCampanha(BigDecimal valorDescontoCampanha) {
+        this.valorDescontoCampanha = valorDescontoCampanha;
+    }
+
     public BigDecimal getValorTotal() {
         return valorTotal;
     }
@@ -114,6 +143,22 @@ public class Pedido {
 
     public void setPontosResgatados(Integer pontosResgatados) {
         this.pontosResgatados = pontosResgatados;
+    }
+
+    public UUID getIdCampanhaAplicada() {
+        return idCampanhaAplicada;
+    }
+
+    public void setIdCampanhaAplicada(UUID idCampanhaAplicada) {
+        this.idCampanhaAplicada = idCampanhaAplicada;
+    }
+
+    public String getNomeCampanhaAplicada() {
+        return nomeCampanhaAplicada;
+    }
+
+    public void setNomeCampanhaAplicada(String nomeCampanhaAplicada) {
+        this.nomeCampanhaAplicada = nomeCampanhaAplicada;
     }
 
 }
