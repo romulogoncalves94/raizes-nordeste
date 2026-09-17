@@ -18,6 +18,7 @@ public class Pedido {
     private StatusPedidoEnum status;
     private BigDecimal valorTotal;
     private List<ItemPedido> itens = new ArrayList<>();
+    private Integer pontosResgatados;
 
     public Pedido() {
     }
@@ -105,6 +106,14 @@ public class Pedido {
 
     public void setItens(List<ItemPedido> itens) {
         this.itens = itens;
+    }
+
+    public Integer getPontosResgatados() {
+        return pontosResgatados;
+    }
+
+    public void setPontosResgatados(Integer pontosResgatados) {
+        this.pontosResgatados = pontosResgatados;
     }
 
 }

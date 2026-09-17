@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,10 @@ public record CreatedPedidoRequest(
         @Schema(description = "Itens do pedido")
         @NotEmpty(message = "O pedido precisa ter ao menos um item")
         @Valid
-        List<CreatedItemPedidoRequest> itens
+        List<CreatedItemPedidoRequest> itens,
+
+        @Schema(description = "Pontos de fidelidade a resgatar como desconto (100 pontos = R$1,00). Opcional.", example = "0")
+        @PositiveOrZero(message = "O campo pontosResgatados não pode ser negativo")
+        Integer pontosResgatados
 ) {
 }

@@ -4,6 +4,7 @@ import com.projeto.raizesnordeste.application.ports.IEstoquePort;
 import com.projeto.raizesnordeste.application.ports.IPedidoPort;
 import com.projeto.raizesnordeste.application.ports.IPedidoRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IProdutoPort;
+import com.projeto.raizesnordeste.application.ports.IProgramaFidelidadePort;
 import com.projeto.raizesnordeste.application.ports.IUnidadePort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioPort;
 import com.projeto.raizesnordeste.domain.enums.CanalPedidoEnum;
@@ -13,6 +14,7 @@ import com.projeto.raizesnordeste.domain.model.ItemPedido;
 import com.projeto.raizesnordeste.domain.model.MovimentacaoEstoque;
 import com.projeto.raizesnordeste.domain.model.Pedido;
 import com.projeto.raizesnordeste.domain.model.Produto;
+import com.projeto.raizesnordeste.domain.model.SolicitacaoResgatePontos;
 import com.projeto.raizesnordeste.presentation.exceptions.BusinessRuleException;
 import com.projeto.raizesnordeste.presentation.exceptions.ResourceNotFoundException;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Set;
 import java.util.UUID;
 
@@ -33,14 +36,16 @@ public class PedidoService implements IPedidoPort {
     private final IUnidadePort unidadePort;
     private final IProdutoPort produtoPort;
     private final IEstoquePort estoquePort;
+    private final IProgramaFidelidadePort programaFidelidadePort;
 
     public PedidoService(IPedidoRepositoryPort repositoryPort, IUsuarioPort usuarioPort, IUnidadePort unidadePort,
-                          IProdutoPort produtoPort, IEstoquePort estoquePort) {
+                          IProdutoPort produtoPort, IEstoquePort estoquePort, IProgramaFidelidadePort programaFidelidadePort) {
         this.repositoryPort = repositoryPort;
         this.usuarioPort = usuarioPort;
         this.unidadePort = unidadePort;
         this.produtoPort = produtoPort;
         this.estoquePort = estoquePort;
+        this.programaFidelidadePort = programaFidelidadePort;
     }
 
     @Override
@@ -68,7 +73,27 @@ public class PedidoService implements IPedidoPort {
             ));
         }
 
+        Integer pontosResgatados = pedido.getPontosResgatados();
+
+        if (pontosResgatados != null && pontosResgatados > 0) {
+            BigDecimal desconto = BigDecimal.valueOf(pontosResgatados)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
+
+            if (desconto.compareTo(valorTotal) > 0) {
+                throw new BusinessRuleException(
+                        "Desconto de pontos (R$" + desconto + ") não pode ser maior que o valor do pedido (R$" + valorTotal + ")"
+                );
+            }
+
+            programaFidelidadePort.resgatar(new SolicitacaoResgatePontos(pedido.getIdUsuario(), pontosResgatados));
+
+            valorTotal = valorTotal.subtract(desconto);
+        } else {
+            pontosResgatados = 0;
+        }
+
         pedido.setValorTotal(valorTotal);
+        pedido.setPontosResgatados(pontosResgatados);
         pedido.setStatus(StatusPedidoEnum.AGUARDANDO_PAGAMENTO);
 
         return repositoryPort.save(pedido);
@@ -107,7 +132,13 @@ public class PedidoService implements IPedidoPort {
 
         pedido.setStatus(status);
 
-        return repositoryPort.update(pedido);
+        Pedido pedidoAtualizado = repositoryPort.update(pedido);
+
+        if (status == StatusPedidoEnum.ENTREGUE) {
+            programaFidelidadePort.acumularPorCompra(pedido.getIdUsuario(), pedido.getValorTotal());
+        }
+
+        return pedidoAtualizado;
     }
 
     @Override
@@ -121,6 +152,10 @@ public class PedidoService implements IPedidoPort {
             estoquePort.movimentar(new MovimentacaoEstoque(
                     pedido.getIdUnidade(), item.getIdProduto(), item.getQuantidade(), TipoMovimentacaoEstoqueEnum.ENTRADA
             ));
+        }
+
+        if (pedido.getPontosResgatados() != null && pedido.getPontosResgatados() > 0) {
+            programaFidelidadePort.estornarResgate(pedido.getIdUsuario(), pedido.getPontosResgatados());
         }
 
         pedido.setStatus(StatusPedidoEnum.CANCELADO);

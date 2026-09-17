@@ -1,5 +1,6 @@
 package com.projeto.raizesnordeste.application.services;
 
+import com.projeto.raizesnordeste.application.ports.IProgramaFidelidadePort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioRepositoryPort;
 import com.projeto.raizesnordeste.domain.model.Usuario;
@@ -19,25 +20,29 @@ public class UsuarioService implements IUsuarioPort {
 
     private final IUsuarioRepositoryPort repositoryPort;
     private final PasswordEncoder passwordEncoder;
+    private final IProgramaFidelidadePort programaFidelidadePort;
 
-    public UsuarioService(IUsuarioRepositoryPort repositoryPort, PasswordEncoder passwordEncoder) {
+    public UsuarioService(IUsuarioRepositoryPort repositoryPort, PasswordEncoder passwordEncoder, IProgramaFidelidadePort programaFidelidadePort) {
         this.repositoryPort = repositoryPort;
         this.passwordEncoder = passwordEncoder;
+        this.programaFidelidadePort = programaFidelidadePort;
     }
 
     @Override
     @Transactional
     public Usuario save(Usuario usuario) {
-        if (Boolean.TRUE.equals(usuario.getAceiteFidelidade())) {
-            // TODO: Lógica do programa de fidelidade
-        }
-
         validarCpfDuplicado(usuario.getCpf());
         validarEmailDuplicado(usuario.getEmail());
 
         usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
 
-        return repositoryPort.save(usuario);
+        Usuario usuarioSalvo = repositoryPort.save(usuario);
+
+        if (Boolean.TRUE.equals(usuarioSalvo.getAceiteFidelidade())) {
+            programaFidelidadePort.criarPrograma(usuarioSalvo.getId());
+        }
+
+        return usuarioSalvo;
     }
 
     @Override
@@ -87,7 +92,13 @@ public class UsuarioService implements IUsuarioPort {
 //            return repositoryPort.update(aplicarMascaraLgpd(usuarioExistente));
 //        }
 
-        return repositoryPort.update(usuario);
+        Usuario usuarioAtualizado = repositoryPort.update(usuario);
+
+        if (Boolean.TRUE.equals(usuarioAtualizado.getAceiteFidelidade())) {
+            programaFidelidadePort.criarPrograma(usuarioAtualizado.getId());
+        }
+
+        return usuarioAtualizado;
     }
 
     @Override

@@ -57,6 +57,9 @@ public class PedidoEntity extends AuditoriaEntity {
     @Column(name = "VALOR_TOTAL", nullable = false, precision = 10, scale = 2)
     private BigDecimal valorTotal;
 
+    @Column(name = "PONTOS_RESGATADOS", nullable = false)
+    private Integer pontosResgatados;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemPedidoEntity> itens = new ArrayList<>();
 

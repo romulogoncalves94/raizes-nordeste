@@ -84,5 +84,6 @@ public class PedidoRepositoryAdapter implements IPedidoRepositoryPort {
         entity.setCanalPedido(pedido.getCanalPedido());
         entity.setStatus(pedido.getStatus());
         entity.setValorTotal(pedido.getValorTotal());
+        entity.setPontosResgatados(pedido.getPontosResgatados() != null ? pedido.getPontosResgatados() : 0);
     }
 }

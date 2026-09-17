@@ -118,6 +118,7 @@ Authorization: Bearer <token>
 | `/api/pedidos/{id}/cancelar` | `POST` | `GERENTE` ou `ATENDENTE` |
 | `/api/pagamentos` | `POST` | Qualquer usuário autenticado |
 | `/api/pagamentos/**` | `GET` | `GERENTE` ou `ATENDENTE` |
+| `/api/fidelidade/**` | `GET` | Qualquer usuário autenticado (UC7 do diagrama de casos de uso é atribuído ao Cliente) |
 | Qualquer outro endpoint não listado acima | — | Requer apenas autenticação (fallback) |
 
 > Notas de backlog:
@@ -184,7 +185,8 @@ Content-Type: application/json
   "itens": [
     { "idProduto": "uuid-produto-1", "quantidade": 2 },
     { "idProduto": "uuid-produto-2", "quantidade": 1 }
-  ]
+  ],
+  "pontosResgatados": 0
 }
 ```
 
@@ -192,9 +194,10 @@ Regras aplicadas:
 - **`canalPedido`** aceita `APP`, `TOTEM`, `BALCAO`, `PICKUP` ou `WEB`, e é filtrável na listagem: `GET /api/pedidos?canalPedido=TOTEM`.
 - **`valorTotal` e `precoUnitario` de cada item são calculados no servidor** a partir do preço atual do produto (`Produto.preco`) — nunca confiam em valor enviado pelo cliente.
 - **Integração com Estoque (Sprint 4)**: ao criar o pedido, cada item gera uma movimentação de `SAIDA` no estoque da unidade (reaproveita `EstoqueService.movimentar`), com todas as garantias já existentes (lock pessimista, 409 se saldo insuficiente, 404 se não houver registro de estoque para o par unidade/produto).
-- **Status inicial**: todo pedido nasce como `AGUARDANDO_PAGAMENTO` (o fluxo de pagamento entra no Sprint 6).
+- **`pontosResgatados` (opcional, integração com Fidelidade — Sprint 7)**: converte pontos em desconto sobre `valorTotal` (100 pontos = R$1,00) e debita o saldo do usuário na mesma transação. Retorna 409 se o desconto for maior que o valor do pedido, ou 409 se o saldo de pontos for insuficiente. Ver seção "Programa de Fidelidade" abaixo.
+- **Status inicial**: todo pedido nasce como `AGUARDANDO_PAGAMENTO`.
 - **Atualização de status**: `PUT /api/pedidos/{id}/status`, bloqueada se o pedido já estiver `ENTREGUE` ou `CANCELADO`.
-- **Cancelamento**: `POST /api/pedidos/{id}/cancelar` estorna (`ENTRADA`) o estoque de cada item e marca o pedido como `CANCELADO`; também bloqueado se já finalizado.
+- **Cancelamento**: `POST /api/pedidos/{id}/cancelar` estorna (`ENTRADA`) o estoque de cada item, **estorna os pontos de fidelidade resgatados** (se houver) e marca o pedido como `CANCELADO`; também bloqueado se já finalizado.
 - Itens do pedido não têm endpoints próprios — são geridos como parte do agregado `Pedido` (criados junto no `POST`, sem CRUD independente).
 
 ## Pagamento (mock)
@@ -222,6 +225,20 @@ Outras regras:
 - Um pedido só pode ter um pagamento (`409 Conflict` em tentativa duplicada) — reflete a relação `1:1` `Pedido`↔`Pagamento` do DER.
 - `GET /api/pagamentos/pedido/{idPedido}` consulta o pagamento de um pedido específico.
 
+## Programa de Fidelidade
+
+**Adesão automática**: ao cadastrar (`POST /api/usuarios`) ou atualizar (`PUT /api/usuarios/{id}`) um usuário com `aceiteFidelidade: true`, o `ProgramaFidelidade` (saldo inicial `0`) é criado automaticamente na mesma transação — não existe endpoint manual de "aderir ao programa". A criação é idempotente (`UsuarioService` chama `criarPrograma`, que não duplica se o programa já existir).
+
+**Acúmulo automático de pontos**: quando um pedido é atualizado para status `ENTREGUE` (`PUT /api/pedidos/{id}/status`), o sistema credita pontos automaticamente ao usuário do pedido — **1 ponto para cada R$ 1,00 do `valorTotal`** (arredondado para baixo). Se o usuário não participa do programa de fidelidade, a operação é ignorada silenciosamente (não impede a entrega do pedido).
+
+**Resgate de pontos como desconto em pedido**: não existe endpoint de resgate avulso — o resgate acontece exclusivamente na criação do pedido, via o campo `pontosResgatados` (ver seção "Pedidos multicanal" acima). Conversão: **100 pontos = R$ 1,00 de desconto**. Se o pedido resgatado for cancelado (`POST /api/pedidos/{id}/cancelar`), os pontos são devolvidos automaticamente ao saldo do usuário.
+
+Cada acúmulo/resgate/estorno gera uma entrada em `HistoricoPontos` (`GET /api/fidelidade/{idUsuario}/historico`, paginado). *Nota: o enum do schema só distingue `ACUMULADO`/`RESGATE` — o estorno por cancelamento é registrado como `ACUMULADO`, sem um tipo próprio.*
+
+Consultas:
+- `GET /api/fidelidade/{idUsuario}` — saldo atual e dados do programa.
+- `GET /api/fidelidade/{idUsuario}/historico` — histórico paginado de acúmulos e resgates.
+
 ## Funcionalidades implementadas
 
 - [x] CRUD de Usuário (`/api/usuarios`), com paginação, validação, CPF e e-mail únicos
@@ -231,7 +248,7 @@ Outras regras:
 - [x] CRUD de Estoque + fluxo crítico do MVP: movimentação de estoque por unidade com lock pessimista e auditoria automática (`/api/estoques`)
 - [x] CRUD de Pedido/ItemPedido (`/api/pedidos`), com filtro por `canalPedido`, cálculo de valor total no servidor, integração com Estoque (débito/estorno) e atualização de status
 - [x] Pagamento mock (`/api/pagamentos`), com cenários de aprovação e recusa determinísticos, integração com Pedido (avança para COZINHA ou cancela) e auditoria da tentativa recusada
-- [ ] Programa de Fidelidade
+- [x] Programa de Fidelidade (`/api/fidelidade`), com adesão automática no cadastro/atualização de usuário, acúmulo automático de pontos em pedidos entregues e resgate manual
 - [ ] Campanhas e Promoções
 - [ ] Testes automatizados
 - [ ] Coleção Postman/Insomnia

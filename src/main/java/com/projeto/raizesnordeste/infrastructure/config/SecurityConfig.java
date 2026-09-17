@@ -80,6 +80,8 @@ public class SecurityConfig {
                         // Pagamentos
                         .requestMatchers(HttpMethod.POST, "/api/pagamentos").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/pagamentos/**").hasAnyRole("GERENTE", "ATENDENTE")
+                        // Fidelidade (UC7 do diagrama de casos de uso é atribuído ao Cliente)
+                        .requestMatchers("/api/fidelidade/**").authenticated()
                         // Fallback: qualquer outro endpoint exige apenas autenticação
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

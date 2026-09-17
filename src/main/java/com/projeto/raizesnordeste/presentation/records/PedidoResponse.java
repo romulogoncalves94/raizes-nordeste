@@ -17,6 +17,7 @@ public record PedidoResponse(
         CanalPedidoEnum canalPedido,
         StatusPedidoEnum status,
         BigDecimal valorTotal,
+        Integer pontosResgatados,
         List<ItemPedidoResponse> itens
 ) {
     public static PedidoResponse from(Pedido pedido) {
@@ -29,6 +30,7 @@ public record PedidoResponse(
                 pedido.getCanalPedido(),
                 pedido.getStatus(),
                 pedido.getValorTotal(),
+                pedido.getPontosResgatados(),
                 pedido.getItens().stream().map(ItemPedidoResponse::from).toList()
         );
     }

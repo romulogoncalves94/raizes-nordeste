@@ -3,6 +3,7 @@ package com.projeto.raizesnordeste.infrastructure.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.projeto.raizesnordeste.application.ports.IEstoquePort;
 import com.projeto.raizesnordeste.application.ports.IEstoqueRepositoryPort;
+import com.projeto.raizesnordeste.application.ports.IHistoricoPontosRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IPagamentoGatewayPort;
 import com.projeto.raizesnordeste.application.ports.IPagamentoPort;
 import com.projeto.raizesnordeste.application.ports.IPagamentoRepositoryPort;
@@ -10,11 +11,14 @@ import com.projeto.raizesnordeste.application.ports.IPedidoPort;
 import com.projeto.raizesnordeste.application.ports.IPedidoRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IProdutoPort;
 import com.projeto.raizesnordeste.application.ports.IProdutoRepositoryPort;
+import com.projeto.raizesnordeste.application.ports.IProgramaFidelidadePort;
+import com.projeto.raizesnordeste.application.ports.IProgramaFidelidadeRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IUnidadePort;
 import com.projeto.raizesnordeste.application.ports.IUnidadeRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioPort;
 import com.projeto.raizesnordeste.application.ports.IUsuarioRepositoryPort;
 import com.projeto.raizesnordeste.application.services.EstoqueService;
+import com.projeto.raizesnordeste.application.services.FidelidadeService;
 import com.projeto.raizesnordeste.application.services.PagamentoService;
 import com.projeto.raizesnordeste.application.services.PedidoService;
 import com.projeto.raizesnordeste.application.services.ProdutoService;
@@ -33,8 +37,15 @@ public class BeansConfig {
     }
 
     @Bean
-    public IUsuarioPort usuarioServicePort(IUsuarioRepositoryPort usuarioRepositoryPort, PasswordEncoder passwordEncoder) {
-        return new UsuarioService(usuarioRepositoryPort, passwordEncoder);
+    public IProgramaFidelidadePort programaFidelidadeServicePort(IProgramaFidelidadeRepositoryPort programaFidelidadeRepositoryPort,
+                                                                   IHistoricoPontosRepositoryPort historicoPontosRepositoryPort) {
+        return new FidelidadeService(programaFidelidadeRepositoryPort, historicoPontosRepositoryPort);
+    }
+
+    @Bean
+    public IUsuarioPort usuarioServicePort(IUsuarioRepositoryPort usuarioRepositoryPort, PasswordEncoder passwordEncoder,
+                                            IProgramaFidelidadePort programaFidelidadePort) {
+        return new UsuarioService(usuarioRepositoryPort, passwordEncoder, programaFidelidadePort);
     }
 
     @Bean
@@ -54,8 +65,9 @@ public class BeansConfig {
 
     @Bean
     public IPedidoPort pedidoServicePort(IPedidoRepositoryPort pedidoRepositoryPort, IUsuarioPort usuarioPort,
-                                          IUnidadePort unidadePort, IProdutoPort produtoPort, IEstoquePort estoquePort) {
-        return new PedidoService(pedidoRepositoryPort, usuarioPort, unidadePort, produtoPort, estoquePort);
+                                          IUnidadePort unidadePort, IProdutoPort produtoPort, IEstoquePort estoquePort,
+                                          IProgramaFidelidadePort programaFidelidadePort) {
+        return new PedidoService(pedidoRepositoryPort, usuarioPort, unidadePort, produtoPort, estoquePort, programaFidelidadePort);
     }
 
     @Bean
