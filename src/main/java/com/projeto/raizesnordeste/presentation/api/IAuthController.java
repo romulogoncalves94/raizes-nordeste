@@ -1,8 +1,8 @@
 package com.projeto.raizesnordeste.presentation.api;
 
 import com.projeto.raizesnordeste.presentation.exceptions.StandardError;
-import com.projeto.raizesnordeste.presentation.records.LoginRequest;
-import com.projeto.raizesnordeste.presentation.records.LoginResponse;
+import com.projeto.raizesnordeste.presentation.records.auth.LoginRequest;
+import com.projeto.raizesnordeste.presentation.records.auth.LoginResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

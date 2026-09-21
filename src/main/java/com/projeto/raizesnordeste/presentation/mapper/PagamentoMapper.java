@@ -3,7 +3,7 @@ package com.projeto.raizesnordeste.presentation.mapper;
 import com.projeto.raizesnordeste.domain.model.Pagamento;
 import com.projeto.raizesnordeste.domain.model.SolicitacaoPagamento;
 import com.projeto.raizesnordeste.infrastructure.persistence.entities.PagamentoEntity;
-import com.projeto.raizesnordeste.presentation.records.CreatedPagamentoRequest;
+import com.projeto.raizesnordeste.presentation.records.pagamento.CreatedPagamentoRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

@@ -2,9 +2,9 @@ package com.projeto.raizesnordeste.presentation.mapper;
 
 import com.projeto.raizesnordeste.domain.model.Usuario;
 import com.projeto.raizesnordeste.infrastructure.persistence.entities.UsuarioEntity;
-import com.projeto.raizesnordeste.presentation.records.CreatedUsuarioRequest;
-import com.projeto.raizesnordeste.presentation.records.UpdateUsuarioRequest;
-import com.projeto.raizesnordeste.presentation.records.UsuarioResponse;
+import com.projeto.raizesnordeste.presentation.records.usuario.CreatedUsuarioRequest;
+import com.projeto.raizesnordeste.presentation.records.usuario.UpdateUsuarioRequest;
+import com.projeto.raizesnordeste.presentation.records.usuario.UsuarioResponse;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

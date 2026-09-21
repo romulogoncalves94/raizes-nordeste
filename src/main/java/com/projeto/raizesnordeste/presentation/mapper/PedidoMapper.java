@@ -2,7 +2,7 @@ package com.projeto.raizesnordeste.presentation.mapper;
 
 import com.projeto.raizesnordeste.domain.model.Pedido;
 import com.projeto.raizesnordeste.infrastructure.persistence.entities.PedidoEntity;
-import com.projeto.raizesnordeste.presentation.records.CreatedPedidoRequest;
+import com.projeto.raizesnordeste.presentation.records.pedido.CreatedPedidoRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

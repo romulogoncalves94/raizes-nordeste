@@ -1,9 +1,9 @@
 package com.projeto.raizesnordeste.presentation.api;
 
 import com.projeto.raizesnordeste.presentation.exceptions.StandardError;
-import com.projeto.raizesnordeste.presentation.records.CampanhaResponse;
-import com.projeto.raizesnordeste.presentation.records.CreatedCampanhaRequest;
-import com.projeto.raizesnordeste.presentation.records.UpdateCampanhaRequest;
+import com.projeto.raizesnordeste.presentation.records.campanha.CampanhaResponse;
+import com.projeto.raizesnordeste.presentation.records.campanha.CreatedCampanhaRequest;
+import com.projeto.raizesnordeste.presentation.records.campanha.UpdateCampanhaRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

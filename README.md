@@ -293,7 +293,8 @@ Regras:
 - [x] Pagamento mock (`/api/pagamentos`), com cenários de aprovação e recusa determinísticos, integração com Pedido (avança para COZINHA ou cancela) e auditoria da tentativa recusada
 - [x] Programa de Fidelidade (`/api/fidelidade`), com adesão automática no cadastro/atualização de usuário, acúmulo automático de pontos em pedidos entregues e resgate como desconto na criação do pedido
 - [x] Campanhas e Promoções (`/api/campanhas`), com CRUD restrito a `GERENTE`, regra de vigência e aplicação automática de desconto percentual em pedidos (empilhado com o desconto de pontos)
-- [ ] Testes automatizados
+- [x] Testes unitários dos services (regras de negócio: estoque insuficiente, CPF/CNPJ duplicado, pagamento recusado, etc.)
+- [ ] Testes de integração dos controllers
 - [ ] Coleção Postman/Insomnia
 
 O desenvolvimento segue um plano de sprints incrementais — cada funcionalidade é entregue e validada isoladamente antes de avançar para a próxima.
@@ -304,4 +305,6 @@ O desenvolvimento segue um plano de sprints incrementais — cada funcionalidade
 ./mvnw test
 ```
 
-(Suíte de testes ainda em construção — ver roadmap acima.)
+Testes unitários dos `application/services` (JUnit 5 + Mockito + AssertJ, sem contexto Spring — dependências mockadas via `@Mock`/`@InjectMocks`), cobrindo as regras de negócio de cada service: CNPJ/CPF/email duplicado, estoque insuficiente na movimentação, pagamento recusado pelo gateway (cancelamento do pedido + estorno de estoque), resgate/estorno de pontos de fidelidade, vigência de campanhas e o cálculo de descontos empilhados (pontos → campanha) na criação de pedidos.
+
+Testes de integração dos controllers (`@SpringBootTest` + `MockMvc`) ainda estão pendentes — ver roadmap acima.

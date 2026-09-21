@@ -2,9 +2,9 @@ package com.projeto.raizesnordeste.presentation.mapper;
 
 import com.projeto.raizesnordeste.domain.model.Produto;
 import com.projeto.raizesnordeste.infrastructure.persistence.entities.ProdutoEntity;
-import com.projeto.raizesnordeste.presentation.records.CreatedProdutoRequest;
-import com.projeto.raizesnordeste.presentation.records.ProdutoResponse;
-import com.projeto.raizesnordeste.presentation.records.UpdateProdutoRequest;
+import com.projeto.raizesnordeste.presentation.records.produto.CreatedProdutoRequest;
+import com.projeto.raizesnordeste.presentation.records.produto.ProdutoResponse;
+import com.projeto.raizesnordeste.presentation.records.produto.UpdateProdutoRequest;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

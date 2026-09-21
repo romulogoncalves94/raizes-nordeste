@@ -2,9 +2,9 @@ package com.projeto.raizesnordeste.presentation.api;
 
 import com.projeto.raizesnordeste.domain.enums.CanalPedidoEnum;
 import com.projeto.raizesnordeste.presentation.exceptions.StandardError;
-import com.projeto.raizesnordeste.presentation.records.CreatedPedidoRequest;
-import com.projeto.raizesnordeste.presentation.records.PedidoResponse;
-import com.projeto.raizesnordeste.presentation.records.UpdateStatusPedidoRequest;
+import com.projeto.raizesnordeste.presentation.records.pedido.CreatedPedidoRequest;
+import com.projeto.raizesnordeste.presentation.records.pedido.PedidoResponse;
+import com.projeto.raizesnordeste.presentation.records.pedido.UpdateStatusPedidoRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

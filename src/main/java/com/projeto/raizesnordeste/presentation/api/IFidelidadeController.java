@@ -1,8 +1,8 @@
 package com.projeto.raizesnordeste.presentation.api;
 
 import com.projeto.raizesnordeste.presentation.exceptions.StandardError;
-import com.projeto.raizesnordeste.presentation.records.HistoricoPontosResponse;
-import com.projeto.raizesnordeste.presentation.records.ProgramaFidelidadeResponse;
+import com.projeto.raizesnordeste.presentation.records.fidelidade.HistoricoPontosResponse;
+import com.projeto.raizesnordeste.presentation.records.fidelidade.ProgramaFidelidadeResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

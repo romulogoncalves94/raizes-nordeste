@@ -3,8 +3,8 @@ package com.projeto.raizesnordeste.presentation.mapper;
 import com.projeto.raizesnordeste.domain.model.Estoque;
 import com.projeto.raizesnordeste.domain.model.MovimentacaoEstoque;
 import com.projeto.raizesnordeste.infrastructure.persistence.entities.EstoqueEntity;
-import com.projeto.raizesnordeste.presentation.records.CreatedEstoqueRequest;
-import com.projeto.raizesnordeste.presentation.records.MovimentacaoEstoqueRequest;
+import com.projeto.raizesnordeste.presentation.records.estoque.CreatedEstoqueRequest;
+import com.projeto.raizesnordeste.presentation.records.estoque.MovimentacaoEstoqueRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

@@ -1,8 +1,8 @@
 package com.projeto.raizesnordeste.presentation.api;
 
 import com.projeto.raizesnordeste.presentation.exceptions.StandardError;
-import com.projeto.raizesnordeste.presentation.records.CreatedPagamentoRequest;
-import com.projeto.raizesnordeste.presentation.records.PagamentoResponse;
+import com.projeto.raizesnordeste.presentation.records.pagamento.CreatedPagamentoRequest;
+import com.projeto.raizesnordeste.presentation.records.pagamento.PagamentoResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

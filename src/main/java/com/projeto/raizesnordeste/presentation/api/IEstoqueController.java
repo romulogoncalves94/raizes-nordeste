@@ -1,9 +1,9 @@
 package com.projeto.raizesnordeste.presentation.api;
 
 import com.projeto.raizesnordeste.presentation.exceptions.StandardError;
-import com.projeto.raizesnordeste.presentation.records.CreatedEstoqueRequest;
-import com.projeto.raizesnordeste.presentation.records.EstoqueResponse;
-import com.projeto.raizesnordeste.presentation.records.MovimentacaoEstoqueRequest;
+import com.projeto.raizesnordeste.presentation.records.estoque.CreatedEstoqueRequest;
+import com.projeto.raizesnordeste.presentation.records.estoque.EstoqueResponse;
+import com.projeto.raizesnordeste.presentation.records.estoque.MovimentacaoEstoqueRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

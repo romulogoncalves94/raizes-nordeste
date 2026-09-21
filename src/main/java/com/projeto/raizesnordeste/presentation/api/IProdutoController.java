@@ -1,9 +1,9 @@
 package com.projeto.raizesnordeste.presentation.api;
 
 import com.projeto.raizesnordeste.presentation.exceptions.StandardError;
-import com.projeto.raizesnordeste.presentation.records.CreatedProdutoRequest;
-import com.projeto.raizesnordeste.presentation.records.ProdutoResponse;
-import com.projeto.raizesnordeste.presentation.records.UpdateProdutoRequest;
+import com.projeto.raizesnordeste.presentation.records.produto.CreatedProdutoRequest;
+import com.projeto.raizesnordeste.presentation.records.produto.ProdutoResponse;
+import com.projeto.raizesnordeste.presentation.records.produto.UpdateProdutoRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

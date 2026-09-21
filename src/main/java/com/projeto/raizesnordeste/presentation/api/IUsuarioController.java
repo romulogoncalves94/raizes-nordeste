@@ -1,9 +1,9 @@
 package com.projeto.raizesnordeste.presentation.api;
 
 import com.projeto.raizesnordeste.presentation.exceptions.StandardError;
-import com.projeto.raizesnordeste.presentation.records.CreatedUsuarioRequest;
-import com.projeto.raizesnordeste.presentation.records.UpdateUsuarioRequest;
-import com.projeto.raizesnordeste.presentation.records.UsuarioResponse;
+import com.projeto.raizesnordeste.presentation.records.usuario.CreatedUsuarioRequest;
+import com.projeto.raizesnordeste.presentation.records.usuario.UpdateUsuarioRequest;
+import com.projeto.raizesnordeste.presentation.records.usuario.UsuarioResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
