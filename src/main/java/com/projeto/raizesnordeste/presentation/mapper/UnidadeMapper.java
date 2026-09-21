@@ -3,7 +3,6 @@ package com.projeto.raizesnordeste.presentation.mapper;
 import com.projeto.raizesnordeste.domain.model.Unidade;
 import com.projeto.raizesnordeste.infrastructure.persistence.entities.UnidadeEntity;
 import com.projeto.raizesnordeste.presentation.records.unidade.CreatedUnidadeRequest;
-import com.projeto.raizesnordeste.presentation.records.unidade.UnidadeResponse;
 import com.projeto.raizesnordeste.presentation.records.unidade.UpdateUnidadeRequest;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -22,6 +21,5 @@ public interface UnidadeMapper {
 
     Unidade toDomain(UnidadeEntity entity);
     UnidadeEntity toEntity(Unidade unidade);
-    UnidadeResponse toResponse(Unidade unidade);
 
 }
