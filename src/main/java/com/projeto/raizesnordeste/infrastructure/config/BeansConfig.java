@@ -1,6 +1,7 @@
 package com.projeto.raizesnordeste.infrastructure.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.projeto.raizesnordeste.application.ports.ICampanhaPort;
 import com.projeto.raizesnordeste.application.ports.ICampanhaRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IEstoquePort;
@@ -36,7 +37,7 @@ public class BeansConfig {
 
     @Bean
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
+        return new ObjectMapper().registerModule(new JavaTimeModule());
     }
 
     @Bean

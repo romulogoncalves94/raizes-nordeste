@@ -49,15 +49,25 @@ Cada funcionalidade é implementada como uma fatia vertical completa passando po
    ```
    http://localhost:8080/swagger-ui.html
    ```
+   (spec OpenAPI em `http://localhost:8080/v3/api-docs`)
+
+A migration `V5__seed_dados_exemplo.sql` popula o banco automaticamente (roda junto com as demais migrations do Flyway na subida) com uma massa de dados de exemplo — 3 usuários (um por perfil), 2 unidades, 7 produtos, estoque por unidade, 3 pedidos em status distintos, pagamentos aprovado/recusado, fidelidade com histórico e 3 campanhas (vigente/expirada/inativa). Ver credenciais de teste na seção "Usuários de teste (seed)" logo abaixo. A coleção Postman (ver seção "Coleção Postman" mais adiante) não depende dessa massa — ela cadastra seus próprios usuários/unidade/produto do zero, então os dois métodos de teste convivem sem conflito.
+
+### Usuários de teste (seed)
+
+Para qualquer pessoa testar a API manualmente (Swagger, Postman avulso, etc.) sem precisar cadastrar nada antes, a migration `V5` já cria um usuário de cada perfil:
+
+| Perfil | E-mail | Senha | Observação |
+|---|---|---|---|
+| `GERENTE` | `gerente@raizesnordeste.com` | `Senha123` | Acesso administrativo completo |
+| `ATENDENTE` | `atendente@raizesnordeste.com` | `Senha123` | Operações de balcão/atendimento |
+| `CLIENTE` | `cliente@raizesnordeste.com` | `Senha123` | Já aderiu à fidelidade e possui pedidos de exemplo (`ENTREGUE`, `COZINHA` e `CANCELADO`) associados |
+
+Basta chamar `POST /api/auth/login` com um desses pares de credenciais para obter um token e explorar a API. **Uso exclusivo de desenvolvimento/demonstração** — a senha é propositalmente simples e nunca deve ser usada em um ambiente com dados reais.
 
 ### Variáveis de ambiente
 
-| Variável | Descrição | Default (dev) |
-|---|---|---|
-| `JWT_SECRET` | Chave (Base64) usada para assinar os tokens JWT (HS256) | valor de desenvolvimento embutido em `application.yaml` |
-| `JWT_EXPIRATION_MS` | Tempo de expiração do token, em milissegundos | `3600000` (1 hora) |
-
-Em produção, sobrescreva `JWT_SECRET` com uma chave própria (mínimo 256 bits em Base64).
+Os defaults de desenvolvimento (JWT_SECRET, JWT_EXPIRATION_MS, etc.) já estão embutidos em `application.yaml` e funcionam sem precisar de configuração extra para rodar localmente. Em produção, seria necessário sobrescrever `JWT_SECRET` com uma chave própria (mínimo 256 bits em Base64).
 
 ## Autenticação e Autorização
 
@@ -254,6 +264,8 @@ Outras regras:
 
 Cada acúmulo/resgate/estorno gera uma entrada em `HistoricoPontos` (`GET /api/fidelidade/{idUsuario}/historico`, paginado). *Nota: o enum do schema só distingue `ACUMULADO`/`RESGATE` — o estorno por cancelamento é registrado como `ACUMULADO`, sem um tipo próprio.*
 
+> **Correção (Sprint 10)**: a constraint `CHECK` de `historico_pontos.tipo` na migration `V1` só permitia os valores `'ACUMULO'`/`'RESGATE'`, mas o enum Java `TipoHistoricoPontosEnum` grava `'ACUMULADO'` (`EnumType.STRING`) — qualquer acúmulo de pontos (pedido `ENTREGUE`) violava a constraint e falhava em runtime. Corrigido na migration `V4__fix_historico_pontos_tipo_check.sql`, que recria o `CHECK` aceitando `'ACUMULADO'`. A coleção Postman (pasta 07) exercita esse fluxo como teste de regressão.
+
 Consultas:
 - `GET /api/fidelidade/{idUsuario}` — saldo atual e dados do programa.
 - `GET /api/fidelidade/{idUsuario}/historico` — histórico paginado de acúmulos e resgates.
@@ -280,7 +292,7 @@ Regras:
 - **Vigência**: `dataFim` deve ser posterior a `dataInicio` (400/409 caso contrário). Uma campanha só é considerada "vigente" quando `ativa=true` **e** o momento atual está entre `dataInicio` e `dataFim` — `ativa` sozinho não basta.
 - `GET /api/campanhas/vigentes` — lista as campanhas vigentes agora, ordenadas pelo maior desconto.
 - **Aplicação automática no Pedido**: ao criar um pedido, o sistema busca a campanha vigente com o **maior** `percentualDesconto` e aplica automaticamente (não é escolha do cliente) — ver seção "Pedidos multicanal" acima para a ordem de aplicação junto ao desconto de pontos.
-- `PedidoResponse` expõe `idCampanhaAplicada` e `valorDescontoCampanha` (ambos persistidos no pedido — migration `V4` — não apenas calculados em memória) e `nomeCampanhaAplicada` (derivado por `JOIN` a partir de `idCampanhaAplicada` na leitura, nunca persistido — evita duplicar dado da campanha no pedido).
+- `PedidoResponse` expõe `idCampanhaAplicada` e `valorDescontoCampanha` (ambos persistidos no pedido — migration `V3` — não apenas calculados em memória) e `nomeCampanhaAplicada` (derivado por `JOIN` a partir de `idCampanhaAplicada` na leitura, nunca persistido — evita duplicar dado da campanha no pedido).
 
 ## Funcionalidades implementadas
 
@@ -294,8 +306,8 @@ Regras:
 - [x] Programa de Fidelidade (`/api/fidelidade`), com adesão automática no cadastro/atualização de usuário, acúmulo automático de pontos em pedidos entregues e resgate como desconto na criação do pedido
 - [x] Campanhas e Promoções (`/api/campanhas`), com CRUD restrito a `GERENTE`, regra de vigência e aplicação automática de desconto percentual em pedidos (empilhado com o desconto de pontos)
 - [x] Testes unitários dos services (regras de negócio: estoque insuficiente, CPF/CNPJ duplicado, pagamento recusado, etc.)
-- [ ] Testes de integração dos controllers
-- [ ] Coleção Postman/Insomnia
+- [x] Testes de integração dos controllers
+- [x] Coleção Postman/Insomnia (29 cenários: 19 positivos, 10 negativos)
 
 O desenvolvimento segue um plano de sprints incrementais — cada funcionalidade é entregue e validada isoladamente antes de avançar para a próxima.
 
@@ -307,4 +319,21 @@ O desenvolvimento segue um plano de sprints incrementais — cada funcionalidade
 
 Testes unitários dos `application/services` (JUnit 5 + Mockito + AssertJ, sem contexto Spring — dependências mockadas via `@Mock`/`@InjectMocks`), cobrindo as regras de negócio de cada service: CNPJ/CPF/email duplicado, estoque insuficiente na movimentação, pagamento recusado pelo gateway (cancelamento do pedido + estorno de estoque), resgate/estorno de pontos de fidelidade, vigência de campanhas e o cálculo de descontos empilhados (pontos → campanha) na criação de pedidos.
 
-Testes de integração dos controllers (`@SpringBootTest` + `MockMvc`) ainda estão pendentes — ver roadmap acima.
+Testes de integração dos 9 controllers (`@SpringBootTest` + `MockMvc`, um por controller em `presentation/api/*IntegrationTest.java`), exercitando a API real de ponta a ponta: autenticação/autorização por papel, fluxo crítico de estoque, criação de pedido com débito de estoque e descontos empilhados, pagamento aprovado/recusado e cenários de erro (400/401/403/404/409/402). Usam [Testcontainers](https://testcontainers.com/) para subir um Postgres 16 descartável e rodar as migrations do Flyway (incluindo o seed) do zero a cada execução — **é necessário ter o Docker em execução** para rodar `./mvnw test` (o mesmo Docker Desktop já usado para o `docker-compose up -d`). Cada teste roda em uma transação revertida ao final, então não interfere nos demais nem no banco de desenvolvimento (`raizes_db`).
+
+## Coleção Postman
+
+`postman/RaizesNordeste.postman_collection.json` contém **29 requisições** (19 cenários positivos, 10 negativos — acima do mínimo de 10/6/4 exigido pela Roteiro), organizadas em 8 pastas na ordem em que devem ser executadas:
+
+1. **Autenticação** — cadastro de GERENTE/CLIENTE, login válido e login com senha inválida (401).
+2. **Unidades** — criação, CNPJ duplicado (409), tentativa sem permissão (403), listagem.
+3. **Produtos** — criação e preço inválido (400).
+4. **Estoque** — fluxo crítico do MVP: criação de saldo, saída com saldo suficiente, saída com saldo insuficiente (409), consulta de saldo, movimentação sem permissão (403).
+5. **Pedidos** — criação (débito de estoque), consulta por id.
+6. **Pagamentos** — aprovação (201), recusa pelo gateway mock (402, com cancelamento do pedido e estorno de estoque) e pagamento duplicado (409).
+7. **Fidelidade e ciclo de vida do pedido** — saldo inicial, transição para `ENTREGUE` (acúmulo automático de pontos), saldo atualizado, transição de pedido já finalizado (409).
+8. **Campanhas** — criação vigente, vigência inválida (409), listagem de vigentes.
+
+A coleção não depende de massa de dados pré-cadastrada: cada request salva em variáveis de coleção (tokens, ids) o que os próximos passos precisam, então basta importar e rodar as pastas em ordem (via Collection Runner ou manualmente) contra uma instância local limpa (`docker-compose up -d` + `./mvnw spring-boot:run`).
+
+Import no Postman: **File → Import** → selecione `postman/RaizesNordeste.postman_collection.json`. No Insomnia, use **Import/Export → Import Data → From File** (compatível com o formato Postman v2.1).
