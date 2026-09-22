@@ -1,0 +1,852 @@
+{
+  "info": {
+    "name": "Raízes do Nordeste - API",
+    "description": "Coleção de testes da API REST do sistema de pedidos multicanal Raízes do Nordeste. Cobre autenticação JWT, CRUDs principais e o fluxo crítico do MVP (controle de estoque por unidade), com cenários positivos e negativos encadeados via variáveis de coleção.\n\nComo rodar:\n1. Suba a aplicação (`docker-compose up -d` + `./mvnw spring-boot:run`).\n2. Importe esta coleção no Postman/Insomnia.\n3. Rode as pastas em ordem (01 a 08) com o Collection Runner, ou execute request a request de cima para baixo — cada request salva os dados (tokens/ids) que os seguintes precisam.\n\nUsuários, unidade, produto, pedidos e campanha usados nos testes são criados pela própria coleção (não há massa de dados pré-cadastrada/seed).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token_gerente", "value": "" },
+    { "key": "token_cliente", "value": "" },
+    { "key": "idUsuarioGerente", "value": "" },
+    { "key": "idUsuarioCliente", "value": "" },
+    { "key": "idUnidade", "value": "" },
+    { "key": "idProduto", "value": "" },
+    { "key": "idPedidoSucesso", "value": "" },
+    { "key": "idPedidoRecusa", "value": "" },
+    { "key": "idCampanha", "value": "" },
+    { "key": "campanhaDataInicio", "value": "" },
+    { "key": "campanhaDataFim", "value": "" },
+    { "key": "campanhaDataFimInvalida", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Autenticação",
+      "item": [
+        {
+          "name": "Criar usuário GERENTE (positivo, 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Retorna id do usuário', () => pm.expect(json.id).to.be.a('string'));",
+                  "pm.collectionVariables.set('idUsuarioGerente', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Ana Gerente Souza\",\n  \"cpf\": \"529.982.247-25\",\n  \"email\": \"ana.gerente@raizesnordeste.com\",\n  \"senha\": \"senha123\",\n  \"perfil\": \"GERENTE\",\n  \"aceiteLgpd\": true,\n  \"aceiteFidelidade\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/usuarios", "host": ["{{baseUrl}}"], "path": ["api", "usuarios"] },
+            "description": "Cenário positivo: cadastro de usuário é público (POST /api/usuarios não exige token). Cria o GERENTE que será usado para autenticar as demais requisições administrativas."
+          }
+        },
+        {
+          "name": "Login GERENTE (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Retorna token JWT', () => pm.expect(json.token).to.be.a('string').and.not.empty);",
+                  "pm.test('Perfil retornado é GERENTE', () => pm.expect(json.perfil).to.eql('GERENTE'));",
+                  "pm.collectionVariables.set('token_gerente', json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.gerente@raizesnordeste.com\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "description": "Cenário positivo: login com credenciais válidas retorna token JWT + perfil, usado no header Authorization das próximas requisições administrativas."
+          }
+        },
+        {
+          "name": "Login com senha inválida (negativo, 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('Corpo segue o formato padrão de erro', () => {",
+                  "  pm.expect(json).to.have.property('status', 401);",
+                  "  pm.expect(json).to.have.property('requestId');",
+                  "  pm.expect(json).to.have.property('message');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.gerente@raizesnordeste.com\",\n  \"senha\": \"senha-errada\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "description": "Cenário negativo: credenciais inválidas devem retornar 401, sem vazar se o e-mail existe ou não."
+          }
+        },
+        {
+          "name": "Criar usuário CLIENTE (positivo, 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('idUsuarioCliente', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Carlos Cliente Lima\",\n  \"cpf\": \"111.444.777-35\",\n  \"email\": \"carlos.cliente@raizesnordeste.com\",\n  \"senha\": \"senha123\",\n  \"perfil\": \"CLIENTE\",\n  \"aceiteLgpd\": true,\n  \"aceiteFidelidade\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/usuarios", "host": ["{{baseUrl}}"], "path": ["api", "usuarios"] },
+            "description": "Cenário positivo: cadastro de um CLIENTE com aceiteFidelidade=true — dispara a adesão automática ao Programa de Fidelidade (testado na pasta 07)."
+          }
+        },
+        {
+          "name": "Login CLIENTE (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Perfil retornado é CLIENTE', () => pm.expect(json.perfil).to.eql('CLIENTE'));",
+                  "pm.collectionVariables.set('token_cliente', json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"carlos.cliente@raizesnordeste.com\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+            "description": "Cenário positivo: token do CLIENTE, usado para criar pedidos e para os testes negativos de autorização (403) nas pastas seguintes."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Unidades",
+      "item": [
+        {
+          "name": "Criar unidade (positivo, 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('idUnidade', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razaoSocial\": \"Raízes do Nordeste Boa Viagem LTDA\",\n  \"cnpj\": \"11.444.777/0001-61\",\n  \"cep\": \"50030230\",\n  \"logradouro\": \"Av. Boa Viagem, 1000\",\n  \"bairro\": \"Boa Viagem\",\n  \"uf\": \"PE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/unidades", "host": ["{{baseUrl}}"], "path": ["api", "unidades"] },
+            "description": "Cenário positivo: criação de unidade restrita a GERENTE."
+          }
+        },
+        {
+          "name": "Criar unidade com CNPJ duplicado (negativo, 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razaoSocial\": \"Raízes do Nordeste Filial Duplicada\",\n  \"cnpj\": \"11.444.777/0001-61\",\n  \"cep\": \"50030230\",\n  \"logradouro\": \"Av. Boa Viagem, 2000\",\n  \"bairro\": \"Boa Viagem\",\n  \"uf\": \"PE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/unidades", "host": ["{{baseUrl}}"], "path": ["api", "unidades"] },
+            "description": "Cenário negativo: reaproveita o CNPJ já cadastrado na request anterior — deve retornar 409 (regra de negócio de unicidade)."
+          }
+        },
+        {
+          "name": "Criar unidade sem permissão de CLIENTE (negativo, 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_cliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razaoSocial\": \"Unidade Não Autorizada\",\n  \"cnpj\": \"45.723.174/0001-10\",\n  \"cep\": \"50030230\",\n  \"logradouro\": \"Rua Teste, 1\",\n  \"bairro\": \"Centro\",\n  \"uf\": \"PE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/unidades", "host": ["{{baseUrl}}"], "path": ["api", "unidades"] },
+            "description": "Cenário negativo: POST /api/unidades é restrito a GERENTE — um token de CLIENTE deve receber 403 Forbidden."
+          }
+        },
+        {
+          "name": "Listar unidades (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Retorna página com ao menos 1 unidade', () => pm.expect(json.content.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token_gerente}}" } ],
+            "url": {
+              "raw": "{{baseUrl}}/api/unidades?page=0&linesPerPage=10&direction=ASC&orderBy=id",
+              "host": ["{{baseUrl}}"], "path": ["api", "unidades"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "linesPerPage", "value": "10" },
+                { "key": "direction", "value": "ASC" },
+                { "key": "orderBy", "value": "id" }
+              ]
+            },
+            "description": "Cenário positivo: leitura paginada, liberada a qualquer usuário autenticado."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Produtos",
+      "item": [
+        {
+          "name": "Criar produto (positivo, 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('idProduto', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Tapioca com Coco\",\n  \"preco\": 18.90,\n  \"categoria\": \"PRATO_PRINCIPAL\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/produtos", "host": ["{{baseUrl}}"], "path": ["api", "produtos"] },
+            "description": "Cenário positivo: criação de produto por GERENTE/ATENDENTE."
+          }
+        },
+        {
+          "name": "Criar produto com preço inválido (negativo, 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.test('Detalha o campo inválido', () => pm.expect(json.details.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Produto Inválido\",\n  \"preco\": -5.00,\n  \"categoria\": \"BEBIDA\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/produtos", "host": ["{{baseUrl}}"], "path": ["api", "produtos"] },
+            "description": "Cenário negativo: preço negativo viola @DecimalMin — deve retornar 400 com detalhes de validação por campo."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Estoque (fluxo crítico do MVP)",
+      "item": [
+        {
+          "name": "Criar registro de estoque (positivo, 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Quantidade inicial é 20', () => pm.expect(json.quantidade).to.eql(20));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUnidade\": \"{{idUnidade}}\",\n  \"idProduto\": \"{{idProduto}}\",\n  \"quantidade\": 20\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/estoques", "host": ["{{baseUrl}}"], "path": ["api", "estoques"] },
+            "description": "Cenário positivo: cria o par unidade+produto no estoque com saldo inicial de 20 unidades (pré-requisito do fluxo crítico)."
+          }
+        },
+        {
+          "name": "Movimentar SAÍDA com saldo suficiente (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Saldo debitado corretamente (20 - 5 = 15)', () => pm.expect(json.quantidade).to.eql(15));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUnidade\": \"{{idUnidade}}\",\n  \"idProduto\": \"{{idProduto}}\",\n  \"quantidade\": 5,\n  \"tipo\": \"SAIDA\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/estoques/movimentar", "host": ["{{baseUrl}}"], "path": ["api", "estoques", "movimentar"] },
+            "description": "Fluxo crítico do MVP — cenário positivo: saída de 5 unidades com saldo (20) suficiente, debita atomicamente sob lock pessimista."
+          }
+        },
+        {
+          "name": "Movimentar SAÍDA com saldo insuficiente (negativo, 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('Mensagem indica saldo insuficiente', () => pm.expect(json.message).to.include('insuficiente'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUnidade\": \"{{idUnidade}}\",\n  \"idProduto\": \"{{idProduto}}\",\n  \"quantidade\": 1000,\n  \"tipo\": \"SAIDA\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/estoques/movimentar", "host": ["{{baseUrl}}"], "path": ["api", "estoques", "movimentar"] },
+            "description": "Fluxo crítico do MVP — cenário negativo: saída (1000) maior que o saldo disponível (15) deve retornar 409 e não alterar o estoque."
+          }
+        },
+        {
+          "name": "Consultar saldo por unidade/produto (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Saldo continua 15 (movimentação recusada não alterou)', () => pm.expect(json.quantidade).to.eql(15));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token_gerente}}" } ],
+            "url": {
+              "raw": "{{baseUrl}}/api/estoques/saldo?idUnidade={{idUnidade}}&idProduto={{idProduto}}",
+              "host": ["{{baseUrl}}"], "path": ["api", "estoques", "saldo"],
+              "query": [
+                { "key": "idUnidade", "value": "{{idUnidade}}" },
+                { "key": "idProduto", "value": "{{idProduto}}" }
+              ]
+            },
+            "description": "Cenário positivo: confirma que o saldo permanece consistente (15) após o cenário negativo anterior — evidencia a atomicidade da operação."
+          }
+        },
+        {
+          "name": "Movimentar estoque sem permissão de CLIENTE (negativo, 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_cliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUnidade\": \"{{idUnidade}}\",\n  \"idProduto\": \"{{idProduto}}\",\n  \"quantidade\": 1,\n  \"tipo\": \"ENTRADA\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/estoques/movimentar", "host": ["{{baseUrl}}"], "path": ["api", "estoques", "movimentar"] },
+            "description": "Cenário negativo: POST /api/estoques/movimentar é restrito a GERENTE/ATENDENTE — um CLIENTE deve receber 403."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Pedidos",
+      "item": [
+        {
+          "name": "Criar pedido para pagamento aprovado (positivo, 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Status inicial é AGUARDANDO_PAGAMENTO', () => pm.expect(json.status).to.eql('AGUARDANDO_PAGAMENTO'));",
+                  "pm.collectionVariables.set('idPedidoSucesso', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_cliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUsuario\": \"{{idUsuarioCliente}}\",\n  \"idUnidade\": \"{{idUnidade}}\",\n  \"canalPedido\": \"TOTEM\",\n  \"itens\": [\n    { \"idProduto\": \"{{idProduto}}\", \"quantidade\": 2 }\n  ],\n  \"pontosResgatados\": 0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pedidos", "host": ["{{baseUrl}}"], "path": ["api", "pedidos"] },
+            "description": "Cenário positivo: cria pedido debitando 2 unidades do estoque (saldo 15 -> 13). Este pedido será pago com sucesso na pasta 06."
+          }
+        },
+        {
+          "name": "Criar pedido para pagamento recusado (positivo, 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('idPedidoRecusa', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_cliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idUsuario\": \"{{idUsuarioCliente}}\",\n  \"idUnidade\": \"{{idUnidade}}\",\n  \"canalPedido\": \"APP\",\n  \"itens\": [\n    { \"idProduto\": \"{{idProduto}}\", \"quantidade\": 1 }\n  ],\n  \"pontosResgatados\": 0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pedidos", "host": ["{{baseUrl}}"], "path": ["api", "pedidos"] },
+            "description": "Cenário positivo (setup): segundo pedido, isolado do primeiro, usado para testar a recusa de pagamento (402) na pasta 06 sem afetar o pedido já pago."
+          }
+        },
+        {
+          "name": "Buscar pedido por id (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Id do pedido confere', () => pm.expect(json.id).to.eql(pm.collectionVariables.get('idPedidoSucesso')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token_gerente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/pedidos/{{idPedidoSucesso}}", "host": ["{{baseUrl}}"], "path": ["api", "pedidos", "{{idPedidoSucesso}}"] },
+            "description": "Cenário positivo: consulta de pedido por id, restrita a GERENTE/ATENDENTE."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Pagamentos",
+      "item": [
+        {
+          "name": "Pagar pedido - aprovado (positivo, 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Status do pagamento é APROVADO', () => pm.expect(json.statusPagamento).to.eql('APROVADO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_cliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idPedido\": \"{{idPedidoSucesso}}\",\n  \"formaPagamento\": \"PIX\",\n  \"simularFalha\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pagamentos", "host": ["{{baseUrl}}"], "path": ["api", "pagamentos"] },
+            "description": "Cenário positivo: gateway mock aprova o pagamento (simularFalha=false) — pedido avança automaticamente para COZINHA."
+          }
+        },
+        {
+          "name": "Pagar pedido - recusado pelo gateway (negativo, 402)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 402 Payment Required', () => pm.response.to.have.status(402));",
+                  "const json = pm.response.json();",
+                  "pm.test('Mensagem menciona pagamento recusado', () => pm.expect(json.message.toLowerCase()).to.include('recusad'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_cliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idPedido\": \"{{idPedidoRecusa}}\",\n  \"formaPagamento\": \"CARTAO_CREDITO\",\n  \"simularFalha\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pagamentos", "host": ["{{baseUrl}}"], "path": ["api", "pagamentos"] },
+            "description": "Cenário negativo obrigatório da Roteiro (negação de pagamento mock): simularFalha=true força a recusa — o pedido é cancelado e o estoque estornado na mesma transação, retornando 402."
+          }
+        },
+        {
+          "name": "Pagar pedido já pago - duplicado (negativo, 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_cliente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idPedido\": \"{{idPedidoSucesso}}\",\n  \"formaPagamento\": \"PIX\",\n  \"simularFalha\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pagamentos", "host": ["{{baseUrl}}"], "path": ["api", "pagamentos"] },
+            "description": "Cenário negativo: o pedido de sucesso já tem um pagamento registrado (relação 1:1) — nova tentativa deve retornar 409."
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Fidelidade e ciclo de vida do pedido",
+      "item": [
+        {
+          "name": "Consultar saldo inicial de fidelidade (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Saldo inicial é 0', () => pm.expect(json.saldoPontos).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token_cliente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/fidelidade/{{idUsuarioCliente}}", "host": ["{{baseUrl}}"], "path": ["api", "fidelidade", "{{idUsuarioCliente}}"] },
+            "description": "Cenário positivo: o CLIENTE aderiu automaticamente ao programa de fidelidade no cadastro (aceiteFidelidade=true) — saldo inicial 0, antes de qualquer pedido entregue."
+          }
+        },
+        {
+          "name": "Atualizar pedido pago para ENTREGUE (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Status atualizado para ENTREGUE', () => pm.expect(json.status).to.eql('ENTREGUE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ENTREGUE\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pedidos/{{idPedidoSucesso}}/status", "host": ["{{baseUrl}}"], "path": ["api", "pedidos", "{{idPedidoSucesso}}", "status"] },
+            "description": "Cenário positivo: transição para ENTREGUE credita pontos de fidelidade automaticamente (1 ponto por R$1,00 do valorTotal, arredondado para baixo) — exercita o INSERT em historico_pontos com tipo ACUMULADO."
+          }
+        },
+        {
+          "name": "Consultar saldo de fidelidade após entrega (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Saldo de pontos aumentou', () => pm.expect(json.saldoPontos).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token_cliente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/fidelidade/{{idUsuarioCliente}}", "host": ["{{baseUrl}}"], "path": ["api", "fidelidade", "{{idUsuarioCliente}}"] },
+            "description": "Cenário positivo: confirma que o acúmulo automático de pontos (request anterior) refletiu no saldo — também serve de teste de regressão para a constraint de `historico_pontos.tipo` (corrigida na migration V4)."
+          }
+        },
+        {
+          "name": "Atualizar status de pedido já finalizado (negativo, 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COZINHA\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pedidos/{{idPedidoSucesso}}/status", "host": ["{{baseUrl}}"], "path": ["api", "pedidos", "{{idPedidoSucesso}}", "status"] },
+            "description": "Cenário negativo: o pedido já está ENTREGUE (status final) — qualquer nova transição deve ser bloqueada com 409."
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Campanhas",
+      "item": [
+        {
+          "name": "Criar campanha vigente (positivo, 201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const agora = new Date();",
+                  "const inicio = new Date(agora.getTime() - 24*60*60*1000);",
+                  "const fim = new Date(agora.getTime() + 30*24*60*60*1000);",
+                  "function toLocalDateTime(d) { return d.toISOString().split('.')[0]; }",
+                  "pm.collectionVariables.set('campanhaDataInicio', toLocalDateTime(inicio));",
+                  "pm.collectionVariables.set('campanhaDataFim', toLocalDateTime(fim));",
+                  "pm.collectionVariables.set('campanhaDataFimInvalida', toLocalDateTime(new Date(inicio.getTime() - 24*60*60*1000)));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Campanha retorna vigente=true', () => pm.expect(json.vigente).to.eql(true));",
+                  "pm.collectionVariables.set('idCampanha', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Semana do Nordeste\",\n  \"percentualDesconto\": 10.00,\n  \"dataInicio\": \"{{campanhaDataInicio}}\",\n  \"dataFim\": \"{{campanhaDataFim}}\",\n  \"ativa\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/campanhas", "host": ["{{baseUrl}}"], "path": ["api", "campanhas"] },
+            "description": "Cenário positivo: campanha com período (ontem até +30 dias) que cobre o momento atual — fica vigente imediatamente."
+          }
+        },
+        {
+          "name": "Criar campanha com dataFim antes de dataInicio (negativo, 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));",
+                  "const json = pm.response.json();",
+                  "pm.test('Mensagem menciona vigência/data', () => pm.expect(json.message.toLowerCase()).to.include('data'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_gerente}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Campanha com Vigência Inválida\",\n  \"percentualDesconto\": 5.00,\n  \"dataInicio\": \"{{campanhaDataInicio}}\",\n  \"dataFim\": \"{{campanhaDataFimInvalida}}\",\n  \"ativa\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/campanhas", "host": ["{{baseUrl}}"], "path": ["api", "campanhas"] },
+            "description": "Cenário negativo: dataFim anterior à dataInicio viola a regra de vigência (BusinessRuleException) — 409 Conflict."
+          }
+        },
+        {
+          "name": "Listar campanhas vigentes (positivo, 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Campanha criada aparece na lista de vigentes', () => {",
+                  "  const ids = json.map((c) => c.id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('idCampanha'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{token_gerente}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/campanhas/vigentes", "host": ["{{baseUrl}}"], "path": ["api", "campanhas", "vigentes"] },
+            "description": "Cenário positivo: lista as campanhas ativas e dentro do período — confirma que a campanha criada é retornada."
+          }
+        }
+      ]
+    }
+  ]
+}
