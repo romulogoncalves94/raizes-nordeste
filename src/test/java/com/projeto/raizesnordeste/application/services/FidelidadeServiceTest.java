@@ -6,6 +6,7 @@ import com.projeto.raizesnordeste.domain.enums.TipoHistoricoPontosEnum;
 import com.projeto.raizesnordeste.domain.model.HistoricoPontos;
 import com.projeto.raizesnordeste.domain.model.ProgramaFidelidade;
 import com.projeto.raizesnordeste.domain.model.SolicitacaoResgatePontos;
+import com.projeto.raizesnordeste.domain.model.Usuario;
 import com.projeto.raizesnordeste.presentation.exceptions.BusinessRuleException;
 import com.projeto.raizesnordeste.presentation.exceptions.ResourceNotFoundException;
 import org.junit.jupiter.api.DisplayName;
@@ -40,18 +41,23 @@ class FidelidadeServiceTest {
     @InjectMocks
     private FidelidadeService fidelidadeService;
 
-    private ProgramaFidelidade umPrograma(UUID id, UUID idUsuario, Integer saldoPontos) {
+    private ProgramaFidelidade getPrograma(UUID id, UUID idUsuario, Integer saldoPontos) {
         return new ProgramaFidelidade(id, idUsuario, "Maria Nordeste", saldoPontos);
+    }
+
+    private Usuario getUsuario() {
+        return new Usuario(UUID.randomUUID(), "Maria Nordeste");
     }
 
     @Test
     @DisplayName("Deve retornar programa existente sem salvar novamente quando criarPrograma já existente")
     void deveRetornarProgramaExistente_semSalvarNovamente_quandoCriarProgramaJaExistente() {
-        UUID idUsuario = UUID.randomUUID();
-        ProgramaFidelidade existente = umPrograma(UUID.randomUUID(), idUsuario, 100);
-        when(repositoryPort.findByUsuarioId(idUsuario)).thenReturn(Optional.of(existente));
+        Usuario usuario = getUsuario();
+        ProgramaFidelidade existente = getPrograma(UUID.randomUUID(), usuario.getId(), 100);
 
-        ProgramaFidelidade resultado = fidelidadeService.criarPrograma(idUsuario);
+        when(repositoryPort.findByUsuarioId(usuario.getId())).thenReturn(Optional.of(existente));
+
+        ProgramaFidelidade resultado = fidelidadeService.criarPrograma(usuario);
 
         assertThat(resultado).isEqualTo(existente);
         verify(repositoryPort, never()).save(any());
@@ -60,18 +66,19 @@ class FidelidadeServiceTest {
     @Test
     @DisplayName("Deve criar programa com saldo zero quando não existente")
     void deveCriarProgramaComSaldoZero_quandoNaoExistente() {
-        UUID idUsuario = UUID.randomUUID();
-        when(repositoryPort.findByUsuarioId(idUsuario)).thenReturn(Optional.empty());
+        Usuario usuario = getUsuario();
+
+        when(repositoryPort.findByUsuarioId(usuario.getId())).thenReturn(Optional.empty());
         when(repositoryPort.save(any(ProgramaFidelidade.class))).thenAnswer(invocation -> {
             ProgramaFidelidade p = invocation.getArgument(0);
             p.setId(UUID.randomUUID());
             return p;
         });
 
-        ProgramaFidelidade resultado = fidelidadeService.criarPrograma(idUsuario);
+        ProgramaFidelidade resultado = fidelidadeService.criarPrograma(usuario);
 
         assertThat(resultado.getSaldoPontos()).isZero();
-        assertThat(resultado.getIdUsuario()).isEqualTo(idUsuario);
+        assertThat(resultado.getIdUsuario()).isEqualTo(usuario.getId());
     }
 
     @Test
@@ -100,7 +107,7 @@ class FidelidadeServiceTest {
     @DisplayName("Não deve acumular pontos quando valor arredondado para baixo resulta em zero")
     void naoDeveAcumularPontos_quandoValorArredondadoParaBaixoResultaEmZero() {
         UUID idUsuario = UUID.randomUUID();
-        ProgramaFidelidade programa = umPrograma(UUID.randomUUID(), idUsuario, 10);
+        ProgramaFidelidade programa = getPrograma(UUID.randomUUID(), idUsuario, 10);
         when(repositoryPort.findByUsuarioId(idUsuario)).thenReturn(Optional.of(programa));
 
         fidelidadeService.acumularPorCompra(idUsuario, new BigDecimal("0.99"));
@@ -113,7 +120,7 @@ class FidelidadeServiceTest {
     @DisplayName("Deve acumular pontos truncados e registrar histórico ACUMULADO")
     void deveAcumularPontosTruncados_eRegistrarHistoricoAcumulado() {
         UUID idUsuario = UUID.randomUUID();
-        ProgramaFidelidade programa = umPrograma(UUID.randomUUID(), idUsuario, 10);
+        ProgramaFidelidade programa = getPrograma(UUID.randomUUID(), idUsuario, 10);
         when(repositoryPort.findByUsuarioId(idUsuario)).thenReturn(Optional.of(programa));
         when(repositoryPort.update(programa)).thenReturn(programa);
 
@@ -131,7 +138,7 @@ class FidelidadeServiceTest {
     @DisplayName("Deve lançar BusinessRuleException ao resgatar com saldo insuficiente")
     void deveLancarBusinessRuleException_quandoResgatarComSaldoInsuficiente() {
         UUID idUsuario = UUID.randomUUID();
-        ProgramaFidelidade programa = umPrograma(UUID.randomUUID(), idUsuario, 50);
+        ProgramaFidelidade programa = getPrograma(UUID.randomUUID(), idUsuario, 50);
         when(repositoryPort.findByUsuarioId(idUsuario)).thenReturn(Optional.of(programa));
 
         assertThatThrownBy(() -> fidelidadeService.resgatar(new SolicitacaoResgatePontos(idUsuario, 100)))
@@ -146,7 +153,7 @@ class FidelidadeServiceTest {
     @DisplayName("Deve debitar saldo e registrar histórico RESGATE quando saldo suficiente")
     void deveDebitarSaldoERegistrarHistoricoResgate_quandoSaldoSuficiente() {
         UUID idUsuario = UUID.randomUUID();
-        ProgramaFidelidade programa = umPrograma(UUID.randomUUID(), idUsuario, 200);
+        ProgramaFidelidade programa = getPrograma(UUID.randomUUID(), idUsuario, 200);
         when(repositoryPort.findByUsuarioId(idUsuario)).thenReturn(Optional.of(programa));
         when(repositoryPort.update(programa)).thenReturn(programa);
 
@@ -175,7 +182,7 @@ class FidelidadeServiceTest {
     @DisplayName("Não deve estornar quando pontos são nulos ou não positivos")
     void naoDeveEstornar_quandoPontosNulosOuNaoPositivos() {
         UUID idUsuario = UUID.randomUUID();
-        ProgramaFidelidade programa = umPrograma(UUID.randomUUID(), idUsuario, 10);
+        ProgramaFidelidade programa = getPrograma(UUID.randomUUID(), idUsuario, 10);
         when(repositoryPort.findByUsuarioId(idUsuario)).thenReturn(Optional.of(programa));
 
         fidelidadeService.estornarResgate(idUsuario, 0);
@@ -188,7 +195,7 @@ class FidelidadeServiceTest {
     @DisplayName("Deve creditar saldo de volta quando estorno de resgate válido")
     void deveCreditarSaldoDeVolta_quandoEstornarResgateValido() {
         UUID idUsuario = UUID.randomUUID();
-        ProgramaFidelidade programa = umPrograma(UUID.randomUUID(), idUsuario, 10);
+        ProgramaFidelidade programa = getPrograma(UUID.randomUUID(), idUsuario, 10);
         when(repositoryPort.findByUsuarioId(idUsuario)).thenReturn(Optional.of(programa));
         when(repositoryPort.update(programa)).thenReturn(programa);
 

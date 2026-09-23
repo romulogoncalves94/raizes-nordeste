@@ -32,15 +32,15 @@ class ProdutoServiceTest {
     @InjectMocks
     private ProdutoService produtoService;
 
-    private Produto umProduto(UUID id) {
+    private Produto getProduto(UUID id) {
         return new Produto(id, "Baião de Dois", new BigDecimal("29.90"), CategoriaProdutoEnum.PRATO_PRINCIPAL);
     }
 
     @Test
     @DisplayName("Deve salvar produto")
     void deveSalvarProduto() {
-        Produto produto = umProduto(null);
-        Produto salvo = umProduto(UUID.randomUUID());
+        Produto produto = getProduto(null);
+        Produto salvo = getProduto(UUID.randomUUID());
         when(repositoryPort.save(produto)).thenReturn(salvo);
 
         Produto resultado = produtoService.save(produto);
@@ -62,7 +62,7 @@ class ProdutoServiceTest {
     @DisplayName("Deve retornar produto quando encontrado por id")
     void deveRetornarProduto_quandoEncontradoPorId() {
         UUID id = UUID.randomUUID();
-        Produto produto = umProduto(id);
+        Produto produto = getProduto(id);
         when(repositoryPort.findById(id)).thenReturn(Optional.of(produto));
 
         Produto encontrado = produtoService.findById(id);
@@ -74,7 +74,7 @@ class ProdutoServiceTest {
     @DisplayName("Deve atualizar produto")
     void deveAtualizarProduto() {
         UUID id = UUID.randomUUID();
-        Produto produto = umProduto(id);
+        Produto produto = getProduto(id);
         when(repositoryPort.update(produto)).thenReturn(produto);
 
         Produto atualizado = produtoService.update(id, produto);
@@ -98,7 +98,7 @@ class ProdutoServiceTest {
     @DisplayName("Deve excluir produto quando existente")
     void deveExcluirProduto_quandoExistente() {
         UUID id = UUID.randomUUID();
-        when(repositoryPort.findById(id)).thenReturn(Optional.of(umProduto(id)));
+        when(repositoryPort.findById(id)).thenReturn(Optional.of(getProduto(id)));
 
         produtoService.delete(id);
 

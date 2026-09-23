@@ -39,7 +39,7 @@ public class UsuarioService implements IUsuarioPort {
         Usuario usuarioSalvo = repositoryPort.save(usuario);
 
         if (Boolean.TRUE.equals(usuarioSalvo.getAceiteFidelidade())) {
-            programaFidelidadePort.criarPrograma(usuarioSalvo.getId());
+            programaFidelidadePort.criarPrograma(usuarioSalvo);
         }
 
         return usuarioSalvo;
@@ -88,14 +88,10 @@ public class UsuarioService implements IUsuarioPort {
             usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
         }
 
-//        if (Boolean.FALSE.equals(usuarioExistente.getAceiteLgpd())) {
-//            return repositoryPort.update(aplicarMascaraLgpd(usuarioExistente));
-//        }
-
         Usuario usuarioAtualizado = repositoryPort.update(usuario);
 
         if (Boolean.TRUE.equals(usuarioAtualizado.getAceiteFidelidade())) {
-            programaFidelidadePort.criarPrograma(usuarioAtualizado.getId());
+            programaFidelidadePort.criarPrograma(usuarioAtualizado);
         }
 
         return usuarioAtualizado;
@@ -119,41 +115,4 @@ public class UsuarioService implements IUsuarioPort {
             throw new BusinessRuleException("Email já cadastrado: " + email);
         }
     }
-
-//    private Usuario aplicarMascaraLgpd(Usuario usuario) {
-//        return new Usuario(
-//                usuario.getId(),
-//                usuario.getNome(),
-//                mascararCpfFormatado(usuario.getCpf()),
-//                mascararEmail(usuario.getEmail()),
-//                usuario.getSenha(),
-//                usuario.getPerfil(),
-//                usuario.getAceiteFidelidade(),
-//                usuario.getAceiteLgpd()
-//        );
-//    }
-//
-//    private String mascararCpfFormatado(String cpf) {
-//        if (cpf == null || cpf.length() < 11) {
-//            return cpf;
-//        }
-//
-//        return cpf.substring(0, 4) + "***.***" + cpf.substring(11);
-//    }
-//
-//    private String mascararEmail(String email) {
-//        if (email == null || !email.contains("@")) {
-//            return email;
-//        }
-//
-//        String[] partes = email.split("@", 2);
-//        String usuario = partes[0];
-//        String dominio = partes[1];
-//
-//        if (usuario.length() <= 2) {
-//            return "*@" + dominio;
-//        }
-//
-//        return usuario.charAt(0) + "***" + usuario.charAt(usuario.length() - 1) + "@" + dominio;
-//    }
 }

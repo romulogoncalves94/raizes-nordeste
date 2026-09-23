@@ -33,14 +33,14 @@ class UnidadeServiceTest {
     @InjectMocks
     private UnidadeService unidadeService;
 
-    private Unidade umaUnidade(UUID id, String cnpj) {
+    private Unidade getUnidade(UUID id, String cnpj) {
         return new Unidade(id, "Raízes Nordeste - Centro", cnpj, "60000-000", "Rua Principal", "Centro", "CE");
     }
 
     @Test
     @DisplayName("Deve lançar BusinessRuleException ao salvar unidade com CNPJ duplicado")
     void deveLancarBusinessRuleException_quandoSalvarUnidadeComCnpjDuplicado() {
-        Unidade unidade = umaUnidade(null, "12345678000100");
+        Unidade unidade = getUnidade(null, "12345678000100");
         when(repositoryPort.existsByCnpj("12345678000100", null)).thenReturn(true);
 
         assertThatThrownBy(() -> unidadeService.save(unidade))
@@ -53,9 +53,9 @@ class UnidadeServiceTest {
     @Test
     @DisplayName("Deve salvar unidade quando CNPJ não é duplicado")
     void deveSalvarUnidade_quandoCnpjNaoDuplicado() {
-        Unidade unidade = umaUnidade(null, "12345678000100");
+        Unidade unidade = getUnidade(null, "12345678000100");
         when(repositoryPort.existsByCnpj("12345678000100", null)).thenReturn(false);
-        when(repositoryPort.save(unidade)).thenReturn(umaUnidade(UUID.randomUUID(), "12345678000100"));
+        when(repositoryPort.save(unidade)).thenReturn(getUnidade(UUID.randomUUID(), "12345678000100"));
 
         Unidade salva = unidadeService.save(unidade);
 
@@ -77,7 +77,7 @@ class UnidadeServiceTest {
     @DisplayName("Deve retornar unidade quando encontrada por id")
     void deveRetornarUnidade_quandoEncontradaPorId() {
         UUID id = UUID.randomUUID();
-        Unidade unidade = umaUnidade(id, "12345678000100");
+        Unidade unidade = getUnidade(id, "12345678000100");
         when(repositoryPort.findById(id)).thenReturn(Optional.of(unidade));
 
         Unidade encontrada = unidadeService.findById(id);
@@ -89,7 +89,7 @@ class UnidadeServiceTest {
     @DisplayName("Deve lançar BusinessRuleException ao atualizar unidade com CNPJ duplicado de outro registro")
     void deveLancarBusinessRuleException_quandoAtualizarUnidadeComCnpjDuplicadoDeOutroRegistro() {
         UUID id = UUID.randomUUID();
-        Unidade unidade = umaUnidade(id, "99999999000199");
+        Unidade unidade = getUnidade(id, "99999999000199");
         when(repositoryPort.existsByCnpj("99999999000199", id)).thenReturn(true);
 
         assertThatThrownBy(() -> unidadeService.update(id, unidade))
@@ -102,7 +102,7 @@ class UnidadeServiceTest {
     @DisplayName("Deve atualizar unidade quando CNPJ não é duplicado")
     void deveAtualizarUnidade_quandoCnpjNaoDuplicado() {
         UUID id = UUID.randomUUID();
-        Unidade unidade = umaUnidade(id, "99999999000199");
+        Unidade unidade = getUnidade(id, "99999999000199");
         when(repositoryPort.existsByCnpj("99999999000199", id)).thenReturn(false);
         when(repositoryPort.update(unidade)).thenReturn(unidade);
 
@@ -115,7 +115,7 @@ class UnidadeServiceTest {
     @DisplayName("Deve atualizar unidade quando CNPJ é nulo (sem checar duplicidade)")
     void deveAtualizarUnidade_quandoCnpjNulo() {
         UUID id = UUID.randomUUID();
-        Unidade unidade = umaUnidade(id, null);
+        Unidade unidade = getUnidade(id, null);
         when(repositoryPort.update(unidade)).thenReturn(unidade);
 
         Unidade atualizada = unidadeService.update(id, unidade);
@@ -140,7 +140,7 @@ class UnidadeServiceTest {
     @DisplayName("Deve excluir unidade quando existente")
     void deveExcluirUnidade_quandoExistente() {
         UUID id = UUID.randomUUID();
-        when(repositoryPort.findById(id)).thenReturn(Optional.of(umaUnidade(id, "12345678000100")));
+        when(repositoryPort.findById(id)).thenReturn(Optional.of(getUnidade(id, "12345678000100")));
 
         unidadeService.delete(id);
 

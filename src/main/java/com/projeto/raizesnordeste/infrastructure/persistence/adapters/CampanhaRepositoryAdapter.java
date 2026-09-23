@@ -38,8 +38,8 @@ public class CampanhaRepositoryAdapter implements ICampanhaRepositoryPort {
     }
 
     @Override
-    public List<Campanha> findVigentes(LocalDateTime agora) {
-        return repository.findVigentes(agora).stream()
+    public List<Campanha> findCampanhasVigentes(LocalDateTime data) {
+        return repository.findVigentes(data).stream()
                 .map(mapper::toDomain)
                 .toList();
     }

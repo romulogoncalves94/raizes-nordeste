@@ -7,6 +7,7 @@ import com.projeto.raizesnordeste.domain.enums.TipoHistoricoPontosEnum;
 import com.projeto.raizesnordeste.domain.model.HistoricoPontos;
 import com.projeto.raizesnordeste.domain.model.ProgramaFidelidade;
 import com.projeto.raizesnordeste.domain.model.SolicitacaoResgatePontos;
+import com.projeto.raizesnordeste.domain.model.Usuario;
 import com.projeto.raizesnordeste.presentation.exceptions.BusinessRuleException;
 import com.projeto.raizesnordeste.presentation.exceptions.ResourceNotFoundException;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Optional;
 import java.util.UUID;
+
+import static java.util.Objects.isNull;
 
 public class FidelidadeService implements IProgramaFidelidadePort {
 
@@ -31,11 +34,12 @@ public class FidelidadeService implements IProgramaFidelidadePort {
 
     @Override
     @Transactional
-    public ProgramaFidelidade criarPrograma(UUID idUsuario) {
-        return repositoryPort.findByUsuarioId(idUsuario)
+    public ProgramaFidelidade criarPrograma(Usuario usuario) {
+        return repositoryPort.findByUsuarioId(usuario.getId())
                 .orElseGet(() -> {
                     ProgramaFidelidade programa = new ProgramaFidelidade();
-                    programa.setIdUsuario(idUsuario);
+                    programa.setIdUsuario(usuario.getId());
+                    programa.setNomeUsuario(usuario.getNome());
                     programa.setSaldoPontos(0);
                     return repositoryPort.save(programa);
                 });
@@ -82,11 +86,8 @@ public class FidelidadeService implements IProgramaFidelidadePort {
         programa.setSaldoPontos(programa.getSaldoPontos() + pontos);
         repositoryPort.update(programa);
 
-        HistoricoPontos historico = new HistoricoPontos();
-        historico.setIdProgramaFidelidade(programa.getId());
-        historico.setPontos(pontos);
-        historico.setTipoHistorico(TipoHistoricoPontosEnum.ACUMULADO);
-        historicoRepositoryPort.save(historico);
+        HistoricoPontos historicoPontos = buildHistoricoPontos(programa, pontos, TipoHistoricoPontosEnum.ACUMULADO);
+        historicoRepositoryPort.save(historicoPontos);
     }
 
     @Override
@@ -96,18 +97,15 @@ public class FidelidadeService implements IProgramaFidelidadePort {
 
         if (programa.getSaldoPontos() < solicitacao.getPontos()) {
             throw new BusinessRuleException(
-                    "Saldo de pontos insuficiente. Disponível: " + programa.getSaldoPontos() + ", solicitado: " + solicitacao.getPontos()
+                    String.format("Saldo de pontos insuficiente. Disponível: %d, solicitado: %d", programa.getSaldoPontos(), solicitacao.getPontos())
             );
         }
 
         programa.setSaldoPontos(programa.getSaldoPontos() - solicitacao.getPontos());
         ProgramaFidelidade atualizado = repositoryPort.update(programa);
 
-        HistoricoPontos historico = new HistoricoPontos();
-        historico.setIdProgramaFidelidade(programa.getId());
-        historico.setPontos(solicitacao.getPontos());
-        historico.setTipoHistorico(TipoHistoricoPontosEnum.RESGATE);
-        historicoRepositoryPort.save(historico);
+        HistoricoPontos historicoPontos = buildHistoricoPontos(programa, solicitacao.getPontos(), TipoHistoricoPontosEnum.RESGATE);
+        historicoRepositoryPort.save(historicoPontos);
 
         return atualizado;
     }
@@ -117,7 +115,7 @@ public class FidelidadeService implements IProgramaFidelidadePort {
     public void estornarResgate(UUID idUsuario, Integer pontos) {
         Optional<ProgramaFidelidade> programaOpt = repositoryPort.findByUsuarioId(idUsuario);
 
-        if (programaOpt.isEmpty() || pontos == null || pontos <= 0) {
+        if (programaOpt.isEmpty() || isNull(pontos) || pontos <= 0) {
             return;
         }
 
@@ -125,11 +123,15 @@ public class FidelidadeService implements IProgramaFidelidadePort {
         programa.setSaldoPontos(programa.getSaldoPontos() + pontos);
         repositoryPort.update(programa);
 
-        // Estorno registrado como ACUMULADO: o enum do schema não distingue "estorno" de "acúmulo por compra"
+        HistoricoPontos historicoPontos = buildHistoricoPontos(programa, pontos, TipoHistoricoPontosEnum.ACUMULADO);
+        historicoRepositoryPort.save(historicoPontos);
+    }
+
+    private HistoricoPontos buildHistoricoPontos(ProgramaFidelidade programaFidelidade, Integer pontos, TipoHistoricoPontosEnum tipo) {
         HistoricoPontos historico = new HistoricoPontos();
-        historico.setIdProgramaFidelidade(programa.getId());
+        historico.setIdProgramaFidelidade(programaFidelidade.getId());
         historico.setPontos(pontos);
-        historico.setTipoHistorico(TipoHistoricoPontosEnum.ACUMULADO);
-        historicoRepositoryPort.save(historico);
+        historico.setTipoHistorico(tipo);
+        return historico;
     }
 }

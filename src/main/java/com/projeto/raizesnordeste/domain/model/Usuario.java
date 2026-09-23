@@ -28,6 +28,11 @@ public class Usuario {
         this.aceiteFidelidade = aceiteFidelidade;
     }
 
+    public Usuario(UUID id, String nome) {
+        this.id = id;
+        this.nome = nome;
+    }
+
     public UUID getId() {
         return id;
     }

@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -74,15 +75,15 @@ class PedidoServiceTest {
     private final UUID idUsuario = UUID.randomUUID();
     private final UUID idUnidade = UUID.randomUUID();
 
-    private Produto umProduto(UUID id, BigDecimal preco) {
+    private Produto getProduto(UUID id, BigDecimal preco) {
         return new Produto(id, "Baião de Dois", preco, CategoriaProdutoEnum.PRATO_PRINCIPAL);
     }
 
-    private ItemPedido umItem(UUID idProduto, Integer quantidade) {
+    private ItemPedido getItemPedido(UUID idProduto, Integer quantidade) {
         return new ItemPedido(null, idProduto, null, quantidade, null);
     }
 
-    private Pedido umPedidoValido(List<ItemPedido> itens) {
+    private Pedido getPedidoValido(List<ItemPedido> itens) {
         Pedido pedido = new Pedido();
         pedido.setIdUsuario(idUsuario);
         pedido.setIdUnidade(idUnidade);
@@ -96,7 +97,7 @@ class PedidoServiceTest {
     }
 
     private MovimentacaoEstoque movimentacaoEquivalenteA(UUID idUnidade, UUID idProduto, Integer quantidade, TipoMovimentacaoEstoqueEnum tipo) {
-        return argThat(m -> m != null
+        return argThat(m -> nonNull(m)
                 && idUnidade.equals(m.getIdUnidade())
                 && idProduto.equals(m.getIdProduto())
                 && quantidade.equals(m.getQuantidade())
@@ -106,7 +107,8 @@ class PedidoServiceTest {
     @Test
     @DisplayName("Deve lançar ResourceNotFoundException quando usuário não é encontrado")
     void deveLancarResourceNotFoundException_quandoUsuarioNaoEncontrado() {
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(UUID.randomUUID(), 1))));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(UUID.randomUUID(), 1))));
+
         when(usuarioPort.findById(idUsuario)).thenThrow(new ResourceNotFoundException("Usuário não encontrado"));
 
         assertThatThrownBy(() -> pedidoService.save(pedido))
@@ -118,7 +120,8 @@ class PedidoServiceTest {
     @Test
     @DisplayName("Deve lançar ResourceNotFoundException quando unidade não é encontrada")
     void deveLancarResourceNotFoundException_quandoUnidadeNaoEncontrada() {
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(UUID.randomUUID(), 1))));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(UUID.randomUUID(), 1))));
+
         when(unidadePort.findById(idUnidade)).thenThrow(new ResourceNotFoundException("Unidade não encontrada"));
 
         assertThatThrownBy(() -> pedidoService.save(pedido))
@@ -128,7 +131,7 @@ class PedidoServiceTest {
     @Test
     @DisplayName("Deve lançar BusinessRuleException quando pedido está sem itens")
     void deveLancarBusinessRuleException_quandoPedidoSemItens() {
-        Pedido pedido = umPedidoValido(new ArrayList<>());
+        Pedido pedido = getPedidoValido(new ArrayList<>());
 
         assertThatThrownBy(() -> pedidoService.save(pedido))
                 .isInstanceOf(BusinessRuleException.class);
@@ -139,7 +142,7 @@ class PedidoServiceTest {
     @Test
     @DisplayName("Deve lançar BusinessRuleException quando itens é nulo")
     void deveLancarBusinessRuleException_quandoItensNulo() {
-        Pedido pedido = umPedidoValido(null);
+        Pedido pedido = getPedidoValido(null);
 
         assertThatThrownBy(() -> pedidoService.save(pedido))
                 .isInstanceOf(BusinessRuleException.class);
@@ -149,7 +152,7 @@ class PedidoServiceTest {
     @DisplayName("Deve lançar ResourceNotFoundException quando produto do item não é encontrado")
     void deveLancarResourceNotFoundException_quandoProdutoDoItemNaoEncontrado() {
         UUID idProduto = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(idProduto, 2))));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(idProduto, 2))));
         when(produtoPort.findById(idProduto)).thenThrow(new ResourceNotFoundException("Produto não encontrado"));
 
         assertThatThrownBy(() -> pedidoService.save(pedido))
@@ -162,8 +165,8 @@ class PedidoServiceTest {
     @DisplayName("Deve propagar BusinessRuleException quando estoque é insuficiente")
     void devePropagarBusinessRuleException_quandoEstoqueInsuficiente() {
         UUID idProduto = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(idProduto, 5))));
-        when(produtoPort.findById(idProduto)).thenReturn(umProduto(idProduto, new BigDecimal("10.00")));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(idProduto, 5))));
+        when(produtoPort.findById(idProduto)).thenReturn(getProduto(idProduto, new BigDecimal("10.00")));
         when(estoquePort.movimentar(any(MovimentacaoEstoque.class)))
                 .thenThrow(new BusinessRuleException("Quantidade insuficiente em estoque. Disponível: 2, solicitado: 5"));
 
@@ -178,9 +181,9 @@ class PedidoServiceTest {
     @DisplayName("Deve lançar BusinessRuleException quando desconto de pontos é maior que o valor do pedido")
     void deveLancarBusinessRuleException_quandoDescontoPontosMaiorQueValorDoPedido() {
         UUID idProduto = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(idProduto, 1))));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(idProduto, 1))));
         pedido.setPontosResgatados(10000);
-        when(produtoPort.findById(idProduto)).thenReturn(umProduto(idProduto, new BigDecimal("10.00")));
+        when(produtoPort.findById(idProduto)).thenReturn(getProduto(idProduto, new BigDecimal("10.00")));
         when(estoquePort.movimentar(any(MovimentacaoEstoque.class))).thenReturn(null);
 
         assertThatThrownBy(() -> pedidoService.save(pedido))
@@ -195,8 +198,8 @@ class PedidoServiceTest {
     @DisplayName("Deve salvar pedido sem descontos quando sem pontos e sem campanha vigente")
     void deveSalvarPedidoSemDescontos_quandoSemPontosESemCampanhaVigente() {
         UUID idProduto = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(idProduto, 2))));
-        when(produtoPort.findById(idProduto)).thenReturn(umProduto(idProduto, new BigDecimal("10.00")));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(idProduto, 2))));
+        when(produtoPort.findById(idProduto)).thenReturn(getProduto(idProduto, new BigDecimal("10.00")));
         when(estoquePort.movimentar(any(MovimentacaoEstoque.class))).thenReturn(null);
         semCampanhaVigente();
         when(repositoryPort.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -217,9 +220,9 @@ class PedidoServiceTest {
     @DisplayName("Deve aplicar desconto de pontos antes do total quando resgate é válido")
     void deveAplicarDescontoDePontosAntesDoTotal_quandoResgateValido() {
         UUID idProduto = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(idProduto, 1))));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(idProduto, 1))));
         pedido.setPontosResgatados(500);
-        when(produtoPort.findById(idProduto)).thenReturn(umProduto(idProduto, new BigDecimal("10.00")));
+        when(produtoPort.findById(idProduto)).thenReturn(getProduto(idProduto, new BigDecimal("10.00")));
         when(estoquePort.movimentar(any(MovimentacaoEstoque.class))).thenReturn(null);
         semCampanhaVigente();
         when(repositoryPort.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -237,12 +240,12 @@ class PedidoServiceTest {
     @DisplayName("Deve aplicar desconto de campanha sobre valor pós-pontos quando resgate e campanha vigente simultâneos")
     void deveAplicarDescontoDeCampanhaSobreValorPosPontos_quandoResgateECampanhaVigenteSimultaneos() {
         UUID idProduto = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(idProduto, 1))));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(idProduto, 1))));
         pedido.setPontosResgatados(500);
         UUID idCampanha = UUID.randomUUID();
         Campanha campanha = new Campanha(idCampanha, "Semana Nordestina", new BigDecimal("10"), null, null, true);
 
-        when(produtoPort.findById(idProduto)).thenReturn(umProduto(idProduto, new BigDecimal("100.00")));
+        when(produtoPort.findById(idProduto)).thenReturn(getProduto(idProduto, new BigDecimal("100.00")));
         when(estoquePort.movimentar(any(MovimentacaoEstoque.class))).thenReturn(null);
         when(campanhaPort.findMelhorVigente()).thenReturn(Optional.of(campanha));
         when(repositoryPort.save(any(Pedido.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -294,7 +297,7 @@ class PedidoServiceTest {
     @DisplayName("Deve lançar BusinessRuleException ao atualizar status de pedido já finalizado")
     void deveLancarBusinessRuleException_quandoAtualizarStatusDePedidoJaFinalizado() {
         UUID id = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>());
+        Pedido pedido = getPedidoValido(new ArrayList<>());
         pedido.setId(id);
         pedido.setStatus(StatusPedidoEnum.CANCELADO);
         when(repositoryPort.findById(id)).thenReturn(Optional.of(pedido));
@@ -309,10 +312,11 @@ class PedidoServiceTest {
     @DisplayName("Deve atualizar status sem acumular pontos quando transição normal")
     void deveAtualizarStatus_semAcumularPontos_quandoTransicaoNormal() {
         UUID id = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>());
+        Pedido pedido = getPedidoValido(new ArrayList<>());
         pedido.setId(id);
         pedido.setStatus(StatusPedidoEnum.AGUARDANDO_PAGAMENTO);
         pedido.setValorTotal(new BigDecimal("30.00"));
+
         when(repositoryPort.findById(id)).thenReturn(Optional.of(pedido));
         when(repositoryPort.update(pedido)).thenReturn(pedido);
 
@@ -326,10 +330,11 @@ class PedidoServiceTest {
     @DisplayName("Deve acumular pontos quando status transiciona para ENTREGUE")
     void deveAcumularPontos_quandoStatusTransicionaParaEntregue() {
         UUID id = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>());
+        Pedido pedido = getPedidoValido(new ArrayList<>());
         pedido.setId(id);
         pedido.setStatus(StatusPedidoEnum.PRONTO);
         pedido.setValorTotal(new BigDecimal("30.00"));
+
         when(repositoryPort.findById(id)).thenReturn(Optional.of(pedido));
         when(repositoryPort.update(pedido)).thenReturn(pedido);
 
@@ -342,7 +347,7 @@ class PedidoServiceTest {
     @DisplayName("Deve lançar BusinessRuleException ao cancelar pedido já finalizado")
     void deveLancarBusinessRuleException_quandoCancelarPedidoJaFinalizado() {
         UUID id = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>());
+        Pedido pedido = getPedidoValido(new ArrayList<>());
         pedido.setId(id);
         pedido.setStatus(StatusPedidoEnum.ENTREGUE);
         when(repositoryPort.findById(id)).thenReturn(Optional.of(pedido));
@@ -358,10 +363,11 @@ class PedidoServiceTest {
     void deveEstornarEstoqueDeCadaItem_semEstornarPontos_quandoPedidoSemPontosResgatados() {
         UUID id = UUID.randomUUID();
         UUID idProduto = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(idProduto, 3))));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(idProduto, 3))));
         pedido.setId(id);
         pedido.setStatus(StatusPedidoEnum.AGUARDANDO_PAGAMENTO);
         pedido.setPontosResgatados(0);
+
         when(repositoryPort.findById(id)).thenReturn(Optional.of(pedido));
         when(repositoryPort.update(pedido)).thenReturn(pedido);
 
@@ -377,10 +383,11 @@ class PedidoServiceTest {
     void deveEstornarPontos_quandoPedidoComPontosResgatados() {
         UUID id = UUID.randomUUID();
         UUID idProduto = UUID.randomUUID();
-        Pedido pedido = umPedidoValido(new ArrayList<>(List.of(umItem(idProduto, 1))));
+        Pedido pedido = getPedidoValido(new ArrayList<>(List.of(getItemPedido(idProduto, 1))));
         pedido.setId(id);
         pedido.setStatus(StatusPedidoEnum.AGUARDANDO_PAGAMENTO);
         pedido.setPontosResgatados(200);
+
         when(repositoryPort.findById(id)).thenReturn(Optional.of(pedido));
         when(repositoryPort.update(pedido)).thenReturn(pedido);
 

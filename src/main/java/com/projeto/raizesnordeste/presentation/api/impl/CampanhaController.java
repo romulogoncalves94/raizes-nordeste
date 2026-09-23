@@ -44,8 +44,8 @@ public class CampanhaController implements ICampanhaController {
     }
 
     @Override
-    public ResponseEntity<List<CampanhaResponse>> findVigentes() {
-        return ResponseEntity.ok(useCase.findVigentes().stream().map(CampanhaResponse::from).toList());
+    public ResponseEntity<List<CampanhaResponse>> findCampanhasVigentes() {
+        return ResponseEntity.ok(useCase.findCampanhasVigentes().stream().map(CampanhaResponse::from).toList());
     }
 
     @Override

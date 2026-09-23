@@ -10,5 +10,4 @@ import java.util.UUID;
 @Repository
 public interface IProgramaFidelidadeRepository extends JpaRepository<ProgramaFidelidadeEntity, UUID> {
     Optional<ProgramaFidelidadeEntity> findByUsuario_Id(UUID idUsuario);
-    boolean existsByUsuario_Id(UUID idUsuario);
 }

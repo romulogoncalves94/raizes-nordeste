@@ -40,14 +40,14 @@ class UsuarioServiceTest {
     @InjectMocks
     private UsuarioService usuarioService;
 
-    private Usuario umUsuario(UUID id, String cpf, String email, Boolean aceiteFidelidade) {
+    private Usuario getUsuario(UUID id, String cpf, String email, Boolean aceiteFidelidade) {
         return new Usuario(id, "Maria Nordeste", cpf, email, "senha123", PerfilUsuarioEnum.CLIENTE, true, aceiteFidelidade);
     }
 
     @Test
     @DisplayName("Deve lançar BusinessRuleException ao salvar usuário com CPF duplicado")
     void deveLancarBusinessRuleException_quandoSalvarUsuarioComCpfDuplicado() {
-        Usuario usuario = umUsuario(null, "11111111111", "maria@raizes.com", false);
+        Usuario usuario = getUsuario(null, "11111111111", "maria@raizes.com", false);
         when(repositoryPort.existsByCpf("11111111111", null)).thenReturn(true);
 
         assertThatThrownBy(() -> usuarioService.save(usuario))
@@ -61,7 +61,7 @@ class UsuarioServiceTest {
     @Test
     @DisplayName("Deve lançar BusinessRuleException ao salvar usuário com email duplicado")
     void deveLancarBusinessRuleException_quandoSalvarUsuarioComEmailDuplicado() {
-        Usuario usuario = umUsuario(null, "11111111111", "maria@raizes.com", false);
+        Usuario usuario = getUsuario(null, "11111111111", "maria@raizes.com", false);
         when(repositoryPort.existsByCpf("11111111111", null)).thenReturn(false);
         when(repositoryPort.existsByEmail("maria@raizes.com", null)).thenReturn(true);
 
@@ -75,11 +75,11 @@ class UsuarioServiceTest {
     @Test
     @DisplayName("Deve codificar senha e salvar sem criar programa de fidelidade quando aceiteFidelidade é false")
     void deveCodificarSenhaESalvar_semCriarProgramaFidelidade_quandoAceiteFidelidadeFalse() {
-        Usuario usuario = umUsuario(null, "11111111111", "maria@raizes.com", false);
+        Usuario usuario = getUsuario(null, "11111111111", "maria@raizes.com", false);
         when(repositoryPort.existsByCpf("11111111111", null)).thenReturn(false);
         when(repositoryPort.existsByEmail("maria@raizes.com", null)).thenReturn(false);
         when(passwordEncoder.encode("senha123")).thenReturn("senha-codificada");
-        Usuario salvo = umUsuario(UUID.randomUUID(), "11111111111", "maria@raizes.com", false);
+        Usuario salvo = getUsuario(UUID.randomUUID(), "11111111111", "maria@raizes.com", false);
         when(repositoryPort.save(usuario)).thenReturn(salvo);
 
         Usuario resultado = usuarioService.save(usuario);
@@ -92,16 +92,18 @@ class UsuarioServiceTest {
     @Test
     @DisplayName("Deve criar programa de fidelidade quando aceiteFidelidade é true")
     void deveCriarProgramaFidelidade_quandoAceiteFidelidadeTrue() {
-        Usuario usuario = umUsuario(null, "11111111111", "maria@raizes.com", true);
+        Usuario usuario = getUsuario(null, "11111111111", "maria@raizes.com", true);
         UUID idSalvo = UUID.randomUUID();
+        Usuario usuarioSalvo = getUsuario(idSalvo, "11111111111", "maria@raizes.com", true);
+
         when(repositoryPort.existsByCpf("11111111111", null)).thenReturn(false);
         when(repositoryPort.existsByEmail("maria@raizes.com", null)).thenReturn(false);
         when(passwordEncoder.encode("senha123")).thenReturn("senha-codificada");
-        when(repositoryPort.save(usuario)).thenReturn(umUsuario(idSalvo, "11111111111", "maria@raizes.com", true));
+        when(repositoryPort.save(usuario)).thenReturn(usuarioSalvo);
 
         usuarioService.save(usuario);
 
-        verify(programaFidelidadePort).criarPrograma(idSalvo);
+        verify(programaFidelidadePort).criarPrograma(usuarioSalvo);
     }
 
     @Test
@@ -127,7 +129,7 @@ class UsuarioServiceTest {
     @DisplayName("Deve lançar BusinessRuleException ao atualizar com CPF duplicado de outro usuário")
     void deveLancarBusinessRuleException_quandoAtualizarComCpfDuplicadoDeOutroUsuario() {
         UUID id = UUID.randomUUID();
-        Usuario usuario = umUsuario(id, "22222222222", "novo@raizes.com", false);
+        Usuario usuario = getUsuario(id, "22222222222", "novo@raizes.com", false);
         when(repositoryPort.existsByCpf("22222222222", id)).thenReturn(true);
 
         assertThatThrownBy(() -> usuarioService.update(id, usuario, false))
@@ -140,7 +142,7 @@ class UsuarioServiceTest {
     @DisplayName("Deve lançar BusinessRuleException ao atualizar com email duplicado de outro usuário")
     void deveLancarBusinessRuleException_quandoAtualizarComEmailDuplicadoDeOutroUsuario() {
         UUID id = UUID.randomUUID();
-        Usuario usuario = umUsuario(id, "22222222222", "novo@raizes.com", false);
+        Usuario usuario = getUsuario(id, "22222222222", "novo@raizes.com", false);
         when(repositoryPort.existsByCpf("22222222222", id)).thenReturn(false);
         when(repositoryPort.existsByEmail("novo@raizes.com", id)).thenReturn(true);
 
@@ -154,7 +156,7 @@ class UsuarioServiceTest {
     @DisplayName("Deve recodificar senha quando senhaAlterada é true")
     void deveRecodificarSenha_quandoSenhaAlteradaTrue() {
         UUID id = UUID.randomUUID();
-        Usuario usuario = umUsuario(id, "22222222222", "novo@raizes.com", false);
+        Usuario usuario = getUsuario(id, "22222222222", "novo@raizes.com", false);
         usuario.setSenha("novaSenha");
         when(repositoryPort.existsByCpf("22222222222", id)).thenReturn(false);
         when(repositoryPort.existsByEmail("novo@raizes.com", id)).thenReturn(false);
@@ -171,7 +173,7 @@ class UsuarioServiceTest {
     @DisplayName("Não deve recodificar senha quando senhaAlterada é false")
     void naoDeveRecodificarSenha_quandoSenhaAlteradaFalse() {
         UUID id = UUID.randomUUID();
-        Usuario usuario = umUsuario(id, "22222222222", "novo@raizes.com", false);
+        Usuario usuario = getUsuario(id, "22222222222", "novo@raizes.com", false);
         usuario.setSenha("hash-existente");
         when(repositoryPort.existsByCpf("22222222222", id)).thenReturn(false);
         when(repositoryPort.existsByEmail("novo@raizes.com", id)).thenReturn(false);
@@ -186,15 +188,14 @@ class UsuarioServiceTest {
     @Test
     @DisplayName("Deve criar programa de fidelidade ao atualizar usuário com aceiteFidelidade true")
     void deveCriarProgramaFidelidade_quandoAtualizarComAceiteFidelidadeTrue() {
-        UUID id = UUID.randomUUID();
-        Usuario usuario = umUsuario(id, "22222222222", "novo@raizes.com", true);
-        when(repositoryPort.existsByCpf("22222222222", id)).thenReturn(false);
-        when(repositoryPort.existsByEmail("novo@raizes.com", id)).thenReturn(false);
+        Usuario usuario = getUsuario(UUID.randomUUID(), "22222222222", "novo@raizes.com", true);
+        when(repositoryPort.existsByCpf("22222222222", usuario.getId())).thenReturn(false);
+        when(repositoryPort.existsByEmail("novo@raizes.com", usuario.getId())).thenReturn(false);
         when(repositoryPort.update(usuario)).thenReturn(usuario);
 
-        usuarioService.update(id, usuario, false);
+        usuarioService.update(usuario.getId(), usuario, false);
 
-        verify(programaFidelidadePort).criarPrograma(id);
+        verify(programaFidelidadePort).criarPrograma(usuario);
     }
 
     @Test
@@ -213,7 +214,7 @@ class UsuarioServiceTest {
     @DisplayName("Deve excluir usuário quando existente")
     void deveExcluirUsuario_quandoExistente() {
         UUID id = UUID.randomUUID();
-        when(repositoryPort.findById(id)).thenReturn(Optional.of(umUsuario(id, "11111111111", "maria@raizes.com", false)));
+        when(repositoryPort.findById(id)).thenReturn(Optional.of(getUsuario(id, "11111111111", "maria@raizes.com", false)));
 
         usuarioService.delete(id);
 

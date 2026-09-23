@@ -41,7 +41,7 @@ class EstoqueServiceTest {
     @InjectMocks
     private EstoqueService estoqueService;
 
-    private Estoque umEstoque(UUID id, UUID idUnidade, UUID idProduto, Integer quantidade) {
+    private Estoque getEstoque(UUID id, UUID idUnidade, UUID idProduto, Integer quantidade) {
         return new Estoque(id, idUnidade, "Unidade Centro", idProduto, "Baião de Dois", quantidade);
     }
 
@@ -50,7 +50,7 @@ class EstoqueServiceTest {
     void deveLancarBusinessRuleException_quandoSalvarEstoqueDuplicadoParaUnidadeEProduto() {
         UUID idUnidade = UUID.randomUUID();
         UUID idProduto = UUID.randomUUID();
-        Estoque estoque = umEstoque(null, idUnidade, idProduto, 10);
+        Estoque estoque = getEstoque(null, idUnidade, idProduto, 10);
         when(repositoryPort.existsByUnidadeAndProduto(idUnidade, idProduto)).thenReturn(true);
 
         assertThatThrownBy(() -> estoqueService.save(estoque))
@@ -64,13 +64,13 @@ class EstoqueServiceTest {
     void deveSalvarEstoque_quandoUnidadeEProdutoExistemESemDuplicidade() {
         UUID idUnidade = UUID.randomUUID();
         UUID idProduto = UUID.randomUUID();
-        Estoque estoque = umEstoque(null, idUnidade, idProduto, 10);
+        Estoque estoque = getEstoque(null, idUnidade, idProduto, 10);
         when(repositoryPort.existsByUnidadeAndProduto(idUnidade, idProduto)).thenReturn(false);
-        when(repositoryPort.save(estoque)).thenReturn(umEstoque(UUID.randomUUID(), idUnidade, idProduto, 10));
+        when(repositoryPort.save(estoque)).thenReturn(getEstoque(UUID.randomUUID(), idUnidade, idProduto, 10));
 
-        Estoque salvo = estoqueService.save(estoque);
+        Estoque estoqueSalvo = estoqueService.save(estoque);
 
-        assertThat(salvo.getId()).isNotNull();
+        assertThat(estoqueSalvo.getId()).isNotNull();
         verify(unidadePort).findById(idUnidade);
         verify(produtoPort).findById(idProduto);
     }
@@ -101,7 +101,7 @@ class EstoqueServiceTest {
     void deveDebitarEstoque_quandoMovimentacaoSaidaComSaldoSuficiente() {
         UUID idUnidade = UUID.randomUUID();
         UUID idProduto = UUID.randomUUID();
-        Estoque estoque = umEstoque(UUID.randomUUID(), idUnidade, idProduto, 10);
+        Estoque estoque = getEstoque(UUID.randomUUID(), idUnidade, idProduto, 10);
         MovimentacaoEstoque movimentacao = new MovimentacaoEstoque(idUnidade, idProduto, 4, TipoMovimentacaoEstoqueEnum.SAIDA);
 
         when(repositoryPort.findByUnidadeAndProdutoParaAtualizacao(idUnidade, idProduto)).thenReturn(Optional.of(estoque));
@@ -117,7 +117,7 @@ class EstoqueServiceTest {
     void deveLancarBusinessRuleException_quandoMovimentacaoSaidaComSaldoInsuficiente() {
         UUID idUnidade = UUID.randomUUID();
         UUID idProduto = UUID.randomUUID();
-        Estoque estoque = umEstoque(UUID.randomUUID(), idUnidade, idProduto, 3);
+        Estoque estoque = getEstoque(UUID.randomUUID(), idUnidade, idProduto, 3);
         MovimentacaoEstoque movimentacao = new MovimentacaoEstoque(idUnidade, idProduto, 10, TipoMovimentacaoEstoqueEnum.SAIDA);
 
         when(repositoryPort.findByUnidadeAndProdutoParaAtualizacao(idUnidade, idProduto)).thenReturn(Optional.of(estoque));
@@ -135,15 +135,15 @@ class EstoqueServiceTest {
     void deveIncrementarEstoque_quandoMovimentacaoEntrada() {
         UUID idUnidade = UUID.randomUUID();
         UUID idProduto = UUID.randomUUID();
-        Estoque estoque = umEstoque(UUID.randomUUID(), idUnidade, idProduto, 5);
+        Estoque estoque = getEstoque(UUID.randomUUID(), idUnidade, idProduto, 5);
         MovimentacaoEstoque movimentacao = new MovimentacaoEstoque(idUnidade, idProduto, 7, TipoMovimentacaoEstoqueEnum.ENTRADA);
 
         when(repositoryPort.findByUnidadeAndProdutoParaAtualizacao(idUnidade, idProduto)).thenReturn(Optional.of(estoque));
         when(repositoryPort.update(any(Estoque.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Estoque atualizado = estoqueService.movimentar(movimentacao);
+        Estoque estoqueAtualizado = estoqueService.movimentar(movimentacao);
 
-        assertThat(atualizado.getQuantidade()).isEqualTo(12);
+        assertThat(estoqueAtualizado.getQuantidade()).isEqualTo(12);
     }
 
     @Test
@@ -175,7 +175,7 @@ class EstoqueServiceTest {
     @DisplayName("Deve excluir estoque quando existente")
     void deveExcluirEstoque_quandoExistente() {
         UUID id = UUID.randomUUID();
-        when(repositoryPort.findById(id)).thenReturn(Optional.of(umEstoque(id, UUID.randomUUID(), UUID.randomUUID(), 1)));
+        when(repositoryPort.findById(id)).thenReturn(Optional.of(getEstoque(id, UUID.randomUUID(), UUID.randomUUID(), 1)));
 
         estoqueService.delete(id);
 

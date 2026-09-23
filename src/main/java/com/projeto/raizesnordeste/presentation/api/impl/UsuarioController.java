@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+import static java.util.Objects.nonNull;
+
 @RestController
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
@@ -46,7 +48,7 @@ public class UsuarioController implements IUsuarioController {
     public ResponseEntity<UsuarioResponse> update(UUID id, UpdateUsuarioRequest request) {
         Usuario usuario = useCase.findById(id);
         Usuario usuarioAtualizado = mapper.updateFromRequest(request, usuario);
-        boolean senhaAlterada = request.senha() != null;
+        boolean senhaAlterada = nonNull(request.senha());
         return ResponseEntity.ok(UsuarioResponse.from(useCase.update(id, usuarioAtualizado, senhaAlterada)));
     }
 

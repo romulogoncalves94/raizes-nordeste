@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 public class CampanhaService implements ICampanhaPort {
 
     private final ICampanhaRepositoryPort repositoryPort;
@@ -29,7 +32,7 @@ public class CampanhaService implements ICampanhaPort {
     public Campanha save(Campanha campanha) {
         validarVigencia(campanha);
 
-        if (campanha.getAtiva() == null) {
+        if (isNull(campanha.getAtiva())) {
             campanha.setAtiva(true);
         }
 
@@ -58,14 +61,14 @@ public class CampanhaService implements ICampanhaPort {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Campanha> findVigentes() {
-        return repositoryPort.findVigentes(LocalDateTime.now());
+    public List<Campanha> findCampanhasVigentes() {
+        return repositoryPort.findCampanhasVigentes(LocalDateTime.now());
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Campanha> findMelhorVigente() {
-        return findVigentes().stream()
+        return findCampanhasVigentes().stream()
                 .max(Comparator.comparing(Campanha::getPercentualDesconto));
     }
 
@@ -85,7 +88,7 @@ public class CampanhaService implements ICampanhaPort {
     }
 
     private void validarVigencia(Campanha campanha) {
-        if (campanha.getDataInicio() != null && campanha.getDataFim() != null
+        if (nonNull(campanha.getDataInicio()) && nonNull(campanha.getDataFim())
                 && !campanha.getDataFim().isAfter(campanha.getDataInicio())) {
             throw new BusinessRuleException("A dataFim da campanha deve ser posterior à dataInicio");
         }

@@ -11,7 +11,7 @@ public interface ICampanhaPort {
     Campanha save(Campanha campanha);
     Campanha findById(UUID id);
     Page<Campanha> findAll(Integer page, Integer linesPerPage, String direction, String orderBy);
-    List<Campanha> findVigentes();
+    List<Campanha> findCampanhasVigentes();
     Optional<Campanha> findMelhorVigente();
     Campanha update(UUID id, Campanha campanha);
     void delete(UUID id);

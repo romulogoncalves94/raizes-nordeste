@@ -2,7 +2,6 @@ package com.projeto.raizesnordeste.infrastructure.persistence.adapters;
 
 import com.projeto.raizesnordeste.application.ports.IPedidoRepositoryPort;
 import com.projeto.raizesnordeste.domain.enums.CanalPedidoEnum;
-import com.projeto.raizesnordeste.domain.model.ItemPedido;
 import com.projeto.raizesnordeste.domain.model.Pedido;
 import com.projeto.raizesnordeste.infrastructure.persistence.entities.ItemPedidoEntity;
 import com.projeto.raizesnordeste.infrastructure.persistence.entities.PedidoEntity;
@@ -19,10 +18,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 @Service
 @RequiredArgsConstructor
@@ -37,18 +38,17 @@ public class PedidoRepositoryAdapter implements IPedidoRepositoryPort {
 
     @Override
     public Pedido save(Pedido pedido) {
-        PedidoEntity entity = new PedidoEntity();
-        preencherEntity(entity, pedido);
+        PedidoEntity entity = buildPedidoEntity(pedido);
 
-        List<ItemPedidoEntity> itensEntity = new ArrayList<>();
-        for (ItemPedido item : pedido.getItens()) {
-            ItemPedidoEntity itemEntity = new ItemPedidoEntity();
-            itemEntity.setPedido(entity);
-            itemEntity.setProduto(produtoRepository.getReferenceById(item.getIdProduto()));
-            itemEntity.setQuantidade(item.getQuantidade());
-            itemEntity.setPrecoUnitario(item.getPrecoUnitario());
-            itensEntity.add(itemEntity);
-        }
+        List<ItemPedidoEntity> itensEntity = pedido.getItens().stream()
+                .map(itemPedido -> ItemPedidoEntity.builder()
+                        .pedido(entity)
+                        .produto(produtoRepository.getReferenceById(itemPedido.getIdProduto()))
+                        .quantidade(itemPedido.getQuantidade())
+                        .precoUnitario(itemPedido.getPrecoUnitario())
+                        .build())
+                .toList();
+
         entity.setItens(itensEntity);
 
         return mapper.toDomain(repository.save(entity));
@@ -81,22 +81,22 @@ public class PedidoRepositoryAdapter implements IPedidoRepositoryPort {
         return mapper.toDomain(repository.save(entity));
     }
 
-    private void preencherEntity(PedidoEntity entity, Pedido pedido) {
-        entity.setUsuario(usuarioRepository.getReferenceById(pedido.getIdUsuario()));
-        entity.setUnidade(unidadeRepository.getReferenceById(pedido.getIdUnidade()));
-        entity.setCanalPedido(pedido.getCanalPedido());
-        entity.setStatus(pedido.getStatus());
-        entity.setValorBruto(valorOuZero(pedido.getValorBruto()));
-        entity.setValorDescontoPontos(valorOuZero(pedido.getValorDescontoPontos()));
-        entity.setValorDescontoCampanha(valorOuZero(pedido.getValorDescontoCampanha()));
-        entity.setValorTotal(pedido.getValorTotal());
-        entity.setPontosResgatados(pedido.getPontosResgatados() != null ? pedido.getPontosResgatados() : 0);
-        entity.setCampanhaAplicada(pedido.getIdCampanhaAplicada() != null
-                ? campanhaRepository.getReferenceById(pedido.getIdCampanhaAplicada())
-                : null);
+    private PedidoEntity buildPedidoEntity(Pedido pedido) {
+        return PedidoEntity.builder()
+                .usuario(usuarioRepository.getReferenceById(pedido.getIdUsuario()))
+                .unidade(unidadeRepository.getReferenceById(pedido.getIdUnidade()))
+                .canalPedido(pedido.getCanalPedido())
+                .status(pedido.getStatus())
+                .valorBruto(valorOuZero(pedido.getValorBruto()))
+                .valorDescontoPontos(valorOuZero(pedido.getValorDescontoPontos()))
+                .valorDescontoCampanha(valorOuZero(pedido.getValorDescontoCampanha()))
+                .valorTotal(pedido.getValorTotal())
+                .pontosResgatados(nonNull(pedido.getPontosResgatados()) ? pedido.getPontosResgatados() : 0)
+                .campanhaAplicada(nonNull(pedido.getIdCampanhaAplicada()) ? campanhaRepository.getReferenceById(pedido.getIdCampanhaAplicada()) : null)
+                .build();
     }
 
     private BigDecimal valorOuZero(BigDecimal valor) {
-        return valor != null ? valor : BigDecimal.ZERO;
+        return isNull(valor) ? BigDecimal.ZERO : valor;
     }
 }

@@ -13,7 +13,7 @@ public interface ICampanhaRepositoryPort {
     Campanha save(Campanha campanha);
     Optional<Campanha> findById(UUID id);
     Page<Campanha> findAll(Pageable pageable);
-    List<Campanha> findVigentes(LocalDateTime agora);
+    List<Campanha> findCampanhasVigentes(LocalDateTime data);
     Campanha update(Campanha campanha);
     void deleteById(UUID id);
 }

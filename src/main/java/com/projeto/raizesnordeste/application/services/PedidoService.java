@@ -15,7 +15,6 @@ import com.projeto.raizesnordeste.domain.model.Campanha;
 import com.projeto.raizesnordeste.domain.model.ItemPedido;
 import com.projeto.raizesnordeste.domain.model.MovimentacaoEstoque;
 import com.projeto.raizesnordeste.domain.model.Pedido;
-import com.projeto.raizesnordeste.domain.model.Produto;
 import com.projeto.raizesnordeste.domain.model.SolicitacaoResgatePontos;
 import com.projeto.raizesnordeste.presentation.exceptions.BusinessRuleException;
 import com.projeto.raizesnordeste.presentation.exceptions.ResourceNotFoundException;
@@ -30,6 +29,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 public class PedidoService implements IPedidoPort {
 
     private static final Set<StatusPedidoEnum> STATUS_FINAIS = Set.of(StatusPedidoEnum.CANCELADO, StatusPedidoEnum.ENTREGUE);
@@ -43,8 +45,8 @@ public class PedidoService implements IPedidoPort {
     private final ICampanhaPort campanhaPort;
 
     public PedidoService(IPedidoRepositoryPort repositoryPort, IUsuarioPort usuarioPort, IUnidadePort unidadePort,
-                          IProdutoPort produtoPort, IEstoquePort estoquePort, IProgramaFidelidadePort programaFidelidadePort,
-                          ICampanhaPort campanhaPort) {
+                         IProdutoPort produtoPort, IEstoquePort estoquePort, IProgramaFidelidadePort programaFidelidadePort,
+                         ICampanhaPort campanhaPort) {
         this.repositoryPort = repositoryPort;
         this.usuarioPort = usuarioPort;
         this.unidadePort = unidadePort;
@@ -60,44 +62,28 @@ public class PedidoService implements IPedidoPort {
         usuarioPort.findById(pedido.getIdUsuario());
         unidadePort.findById(pedido.getIdUnidade());
 
-        if (pedido.getItens() == null || pedido.getItens().isEmpty()) {
+        if (isNull(pedido.getItens()) || pedido.getItens().isEmpty()) {
             throw new BusinessRuleException("O pedido precisa ter ao menos um item");
         }
 
-        BigDecimal valorBruto = BigDecimal.ZERO;
-
-        for (ItemPedido item : pedido.getItens()) {
-            Produto produto = produtoPort.findById(item.getIdProduto());
-            item.setNomeProduto(produto.getNome());
-            item.setPrecoUnitario(produto.getPreco());
-            valorBruto = valorBruto.add(produto.getPreco().multiply(BigDecimal.valueOf(item.getQuantidade())));
-        }
-
-        for (ItemPedido item : pedido.getItens()) {
-            estoquePort.movimentar(new MovimentacaoEstoque(
-                    pedido.getIdUnidade(), item.getIdProduto(), item.getQuantidade(), TipoMovimentacaoEstoqueEnum.SAIDA
-            ));
-        }
+        BigDecimal valorBruto = mapValoresBrutoPedido(pedido);
 
         BigDecimal valorRestante = valorBruto;
-        Integer pontosResgatados = pedido.getPontosResgatados();
+        int pontosResgatados = Optional.ofNullable(pedido.getPontosResgatados()).orElse(0);
         BigDecimal descontoPontos = BigDecimal.ZERO;
 
-        if (pontosResgatados != null && pontosResgatados > 0) {
+        if (pontosResgatados > 0) {
             descontoPontos = BigDecimal.valueOf(pontosResgatados)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
 
             if (descontoPontos.compareTo(valorRestante) > 0) {
                 throw new BusinessRuleException(
-                        "Desconto de pontos (R$" + descontoPontos + ") não pode ser maior que o valor do pedido (R$" + valorRestante + ")"
+                        String.format("Desconto de pontos (R$%.2f) não pode ser maior que o valor do pedido (R$%.2f)", descontoPontos, valorRestante)
                 );
             }
 
             programaFidelidadePort.resgatar(new SolicitacaoResgatePontos(pedido.getIdUsuario(), pontosResgatados));
-
             valorRestante = valorRestante.subtract(descontoPontos);
-        } else {
-            pontosResgatados = 0;
         }
 
         Optional<Campanha> campanhaVigente = campanhaPort.findMelhorVigente();
@@ -106,19 +92,15 @@ public class PedidoService implements IPedidoPort {
 
         if (campanhaVigente.isPresent()) {
             Campanha campanha = campanhaVigente.get();
+
             descontoCampanha = valorRestante.multiply(campanha.getPercentualDesconto())
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
+
             valorRestante = valorRestante.subtract(descontoCampanha);
             idCampanhaAplicada = campanha.getId();
         }
 
-        pedido.setValorBruto(valorBruto);
-        pedido.setValorDescontoPontos(descontoPontos);
-        pedido.setValorDescontoCampanha(descontoCampanha);
-        pedido.setValorTotal(valorRestante);
-        pedido.setPontosResgatados(pontosResgatados);
-        pedido.setIdCampanhaAplicada(idCampanhaAplicada);
-        pedido.setStatus(StatusPedidoEnum.AGUARDANDO_PAGAMENTO);
+        setValoresTotaisPedido(pedido, valorBruto, descontoPontos, descontoCampanha, valorRestante, pontosResgatados, idCampanhaAplicada);
 
         return repositoryPort.save(pedido);
     }
@@ -140,7 +122,7 @@ public class PedidoService implements IPedidoPort {
                 orderBy
         );
 
-        if (canalPedido != null) {
+        if (nonNull(canalPedido)) {
             return repositoryPort.findAllByCanalPedido(canalPedido, pageRequest);
         }
 
@@ -158,7 +140,7 @@ public class PedidoService implements IPedidoPort {
 
         Pedido pedidoAtualizado = repositoryPort.update(pedido);
 
-        if (status == StatusPedidoEnum.ENTREGUE) {
+        if (StatusPedidoEnum.ENTREGUE.equals(status)) {
             programaFidelidadePort.acumularPorCompra(pedido.getIdUsuario(), pedido.getValorTotal());
         }
 
@@ -173,12 +155,10 @@ public class PedidoService implements IPedidoPort {
         validarPedidoNaoFinalizado(pedido);
 
         for (ItemPedido item : pedido.getItens()) {
-            estoquePort.movimentar(new MovimentacaoEstoque(
-                    pedido.getIdUnidade(), item.getIdProduto(), item.getQuantidade(), TipoMovimentacaoEstoqueEnum.ENTRADA
-            ));
+            movimentaEstoqueProdutos(pedido, item, TipoMovimentacaoEstoqueEnum.ENTRADA);
         }
 
-        if (pedido.getPontosResgatados() != null && pedido.getPontosResgatados() > 0) {
+        if (nonNull(pedido.getPontosResgatados()) && pedido.getPontosResgatados() > 0) {
             programaFidelidadePort.estornarResgate(pedido.getIdUsuario(), pedido.getPontosResgatados());
         }
 
@@ -189,7 +169,39 @@ public class PedidoService implements IPedidoPort {
 
     private void validarPedidoNaoFinalizado(Pedido pedido) {
         if (STATUS_FINAIS.contains(pedido.getStatus())) {
-            throw new BusinessRuleException("Não é possível alterar um pedido com status " + pedido.getStatus());
+            throw new BusinessRuleException(String.format("Não é possível alterar um pedido com status %s", pedido.getStatus()));
         }
+    }
+
+    private static void setValoresTotaisPedido(Pedido pedido, BigDecimal valorBruto, BigDecimal descontoPontos, BigDecimal descontoCampanha, BigDecimal valorRestante, int pontosResgatados, UUID idCampanhaAplicada) {
+        pedido.setValorBruto(valorBruto);
+        pedido.setValorDescontoPontos(descontoPontos);
+        pedido.setValorDescontoCampanha(descontoCampanha);
+        pedido.setValorTotal(valorRestante);
+        pedido.setPontosResgatados(pontosResgatados);
+        pedido.setIdCampanhaAplicada(idCampanhaAplicada);
+        pedido.setStatus(StatusPedidoEnum.AGUARDANDO_PAGAMENTO);
+    }
+
+    private BigDecimal mapValoresBrutoPedido(Pedido pedido) {
+        return pedido.getItens().stream()
+                .map(itemPedido -> {
+                    var produto = produtoPort.findById(itemPedido.getIdProduto());
+                    itemPedido.setNomeProduto(produto.getNome());
+                    itemPedido.setPrecoUnitario(produto.getPreco());
+
+                    movimentaEstoqueProdutos(pedido, itemPedido, TipoMovimentacaoEstoqueEnum.SAIDA);
+
+                    return produto.getPreco().multiply(BigDecimal.valueOf(itemPedido.getQuantidade()));
+                }).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private void movimentaEstoqueProdutos(Pedido pedido, ItemPedido itemPedido, TipoMovimentacaoEstoqueEnum saida) {
+        estoquePort.movimentar(new MovimentacaoEstoque(
+                pedido.getIdUnidade(),
+                itemPedido.getIdProduto(),
+                itemPedido.getQuantidade(),
+                saida
+        ));
     }
 }

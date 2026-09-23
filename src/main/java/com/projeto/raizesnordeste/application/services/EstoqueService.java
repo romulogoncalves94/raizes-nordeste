@@ -76,10 +76,10 @@ public class EstoqueService implements IEstoquePort {
 
         Integer quantidade = movimentacao.getQuantidade();
 
-        if (movimentacao.getTipo() == TipoMovimentacaoEstoqueEnum.SAIDA) {
+        if (TipoMovimentacaoEstoqueEnum.SAIDA.equals(movimentacao.getTipo())) {
             if (estoque.getQuantidade() < quantidade) {
                 throw new BusinessRuleException(
-                        "Quantidade insuficiente em estoque. Disponível: " + estoque.getQuantidade() + ", solicitado: " + quantidade
+                        String.format("Quantidade insuficiente em estoque. Disponível: %d, solicitado: %d", estoque.getQuantidade(), quantidade)
                 );
             }
             estoque.setQuantidade(estoque.getQuantidade() - quantidade);

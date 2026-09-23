@@ -8,6 +8,5 @@ import java.util.UUID;
 public interface IProgramaFidelidadeRepositoryPort {
     ProgramaFidelidade save(ProgramaFidelidade programa);
     Optional<ProgramaFidelidade> findByUsuarioId(UUID idUsuario);
-    boolean existsByUsuarioId(UUID idUsuario);
     ProgramaFidelidade update(ProgramaFidelidade programa);
 }

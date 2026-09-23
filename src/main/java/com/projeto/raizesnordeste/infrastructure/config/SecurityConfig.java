@@ -13,6 +13,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
+import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,51 +48,86 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(restAuthenticationEntryPoint)
-                        .accessDeniedHandler(restAccessDeniedHandler))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        // Usuários
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/usuarios", "/api/usuarios/**").hasAnyRole("GERENTE", "ATENDENTE")
-                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/usuarios/**").hasRole("GERENTE")
-                        // Unidades
-                        .requestMatchers(HttpMethod.POST, "/api/unidades").hasRole("GERENTE")
-                        .requestMatchers(HttpMethod.GET, "/api/unidades", "/api/unidades/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/unidades/**").hasRole("GERENTE")
-                        .requestMatchers(HttpMethod.DELETE, "/api/unidades/**").hasRole("GERENTE")
-                        // Produtos
-                        .requestMatchers(HttpMethod.POST, "/api/produtos").hasAnyRole("GERENTE", "ATENDENTE")
-                        .requestMatchers(HttpMethod.GET, "/api/produtos", "/api/produtos/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/produtos/**").hasAnyRole("GERENTE", "ATENDENTE")
-                        .requestMatchers(HttpMethod.DELETE, "/api/produtos/**").hasAnyRole("GERENTE", "ATENDENTE")
-                        // Estoques
-                        .requestMatchers(HttpMethod.POST, "/api/estoques/movimentar").hasAnyRole("GERENTE", "ATENDENTE")
-                        .requestMatchers(HttpMethod.POST, "/api/estoques").hasRole("GERENTE")
-                        .requestMatchers(HttpMethod.GET, "/api/estoques", "/api/estoques/**").hasAnyRole("GERENTE", "ATENDENTE")
-                        .requestMatchers(HttpMethod.DELETE, "/api/estoques/**").hasRole("GERENTE")
-                        // Pedidos
-                        .requestMatchers(HttpMethod.POST, "/api/pedidos").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/pedidos", "/api/pedidos/**").hasAnyRole("GERENTE", "ATENDENTE")
-                        .requestMatchers(HttpMethod.PUT, "/api/pedidos/*/status").hasAnyRole("GERENTE", "ATENDENTE")
-                        .requestMatchers(HttpMethod.POST, "/api/pedidos/*/cancelar").hasAnyRole("GERENTE", "ATENDENTE")
-                        // Pagamentos
-                        .requestMatchers(HttpMethod.POST, "/api/pagamentos").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/pagamentos/**").hasAnyRole("GERENTE", "ATENDENTE")
-                        // Fidelidade (UC7 do diagrama de casos de uso é atribuído ao Cliente)
-                        .requestMatchers("/api/fidelidade/**").authenticated()
-                        // Campanhas
-                        .requestMatchers(HttpMethod.POST, "/api/campanhas").hasRole("GERENTE")
-                        .requestMatchers(HttpMethod.GET, "/api/campanhas", "/api/campanhas/**").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/campanhas/**").hasRole("GERENTE")
-                        .requestMatchers(HttpMethod.DELETE, "/api/campanhas/**").hasRole("GERENTE")
-                        // Fallback: qualquer outro endpoint exige apenas autenticação
-                        .anyRequest().authenticated())
+                .exceptionHandling(this::configurarTratamentoExcecoes)
+                .authorizeHttpRequests(this::configurarAutorizacoes)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private void configurarTratamentoExcecoes(ExceptionHandlingConfigurer<HttpSecurity> exception) {
+        exception
+                .authenticationEntryPoint(restAuthenticationEntryPoint)
+                .accessDeniedHandler(restAccessDeniedHandler);
+    }
+
+    private void configurarAutorizacoes(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        autorizarRotasPublicas(auth);
+        autorizarUsuarios(auth);
+        autorizarUnidades(auth);
+        autorizarProdutos(auth);
+        autorizarEstoques(auth);
+        autorizarPedidos(auth);
+        autorizarPagamentos(auth);
+        autorizarFidelidade(auth);
+        autorizarCampanhas(auth);
+
+        auth.anyRequest().authenticated();
+    }
+
+    private void autorizarRotasPublicas(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers("/api/auth/**").permitAll();
+        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
+    }
+
+    private void autorizarUsuarios(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll();
+        auth.requestMatchers(HttpMethod.GET, "/api/usuarios", "/api/usuarios/**").hasAnyRole("GERENTE", "ATENDENTE");
+        auth.requestMatchers(HttpMethod.PUT, "/api/usuarios/**").authenticated();
+        auth.requestMatchers(HttpMethod.DELETE, "/api/usuarios/**").hasRole("GERENTE");
+    }
+
+    private void autorizarUnidades(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers(HttpMethod.POST, "/api/unidades").hasRole("GERENTE");
+        auth.requestMatchers(HttpMethod.GET, "/api/unidades", "/api/unidades/**").authenticated();
+        auth.requestMatchers(HttpMethod.PUT, "/api/unidades/**").hasRole("GERENTE");
+        auth.requestMatchers(HttpMethod.DELETE, "/api/unidades/**").hasRole("GERENTE");
+    }
+
+    private void autorizarProdutos(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers(HttpMethod.POST, "/api/produtos").hasAnyRole("GERENTE", "ATENDENTE");
+        auth.requestMatchers(HttpMethod.GET, "/api/produtos", "/api/produtos/**").authenticated();
+        auth.requestMatchers(HttpMethod.PUT, "/api/produtos/**").hasAnyRole("GERENTE", "ATENDENTE");
+        auth.requestMatchers(HttpMethod.DELETE, "/api/produtos/**").hasAnyRole("GERENTE", "ATENDENTE");
+    }
+
+    private void autorizarEstoques(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers(HttpMethod.POST, "/api/estoques/movimentar").hasAnyRole("GERENTE", "ATENDENTE");
+        auth.requestMatchers(HttpMethod.POST, "/api/estoques").hasRole("GERENTE");
+        auth.requestMatchers(HttpMethod.GET, "/api/estoques", "/api/estoques/**").hasAnyRole("GERENTE", "ATENDENTE");
+        auth.requestMatchers(HttpMethod.DELETE, "/api/estoques/**").hasRole("GERENTE");
+    }
+
+    private void autorizarPedidos(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers(HttpMethod.POST, "/api/pedidos").authenticated();
+        auth.requestMatchers(HttpMethod.GET, "/api/pedidos", "/api/pedidos/**").hasAnyRole("GERENTE", "ATENDENTE");
+        auth.requestMatchers(HttpMethod.PUT, "/api/pedidos/*/status").hasAnyRole("GERENTE", "ATENDENTE");
+        auth.requestMatchers(HttpMethod.POST, "/api/pedidos/*/cancelar").hasAnyRole("GERENTE", "ATENDENTE");
+    }
+
+    private void autorizarPagamentos(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers(HttpMethod.POST, "/api/pagamentos").authenticated();
+        auth.requestMatchers(HttpMethod.GET, "/api/pagamentos/**").hasAnyRole("GERENTE", "ATENDENTE");
+    }
+
+    private void autorizarFidelidade(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers("/api/fidelidade/**").authenticated();
+    }
+
+    private void autorizarCampanhas(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
+        auth.requestMatchers(HttpMethod.POST, "/api/campanhas").hasRole("GERENTE");
+        auth.requestMatchers(HttpMethod.GET, "/api/campanhas", "/api/campanhas/**").authenticated();
+        auth.requestMatchers(HttpMethod.PUT, "/api/campanhas/**").hasRole("GERENTE");
+        auth.requestMatchers(HttpMethod.DELETE, "/api/campanhas/**").hasRole("GERENTE");
     }
 }

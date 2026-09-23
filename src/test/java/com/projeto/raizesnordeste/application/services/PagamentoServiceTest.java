@@ -48,15 +48,16 @@ class PagamentoServiceTest {
     @InjectMocks
     private PagamentoService pagamentoService;
 
-    private Pedido umPedidoAguardandoPagamento(UUID id) {
+    private Pedido getPedidoAguardandoPagamento() {
         Pedido pedido = new Pedido();
-        pedido.setId(id);
+        pedido.setId(UUID.randomUUID());
         pedido.setStatus(StatusPedidoEnum.AGUARDANDO_PAGAMENTO);
         pedido.setValorTotal(new BigDecimal("50.00"));
+        
         return pedido;
     }
 
-    private SolicitacaoPagamento umaSolicitacao(UUID idPedido, boolean simularFalha) {
+    private SolicitacaoPagamento getSolicitacaoPagamento(UUID idPedido, boolean simularFalha) {
         return new SolicitacaoPagamento(idPedido, FormaPagamentoEnum.PIX, simularFalha);
     }
 
@@ -66,19 +67,18 @@ class PagamentoServiceTest {
         UUID idPedido = UUID.randomUUID();
         when(pedidoPort.findById(idPedido)).thenThrow(new ResourceNotFoundException("Pedido não encontrado"));
 
-        assertThatThrownBy(() -> pagamentoService.processar(umaSolicitacao(idPedido, false)))
+        assertThatThrownBy(() -> pagamentoService.processar(getSolicitacaoPagamento(idPedido, false)))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
     @DisplayName("Deve lançar BusinessRuleException quando pedido não está aguardando pagamento")
     void deveLancarBusinessRuleException_quandoPedidoNaoEstaAguardandoPagamento() {
-        UUID idPedido = UUID.randomUUID();
-        Pedido pedido = umPedidoAguardandoPagamento(idPedido);
+        Pedido pedido = getPedidoAguardandoPagamento();
         pedido.setStatus(StatusPedidoEnum.COZINHA);
-        when(pedidoPort.findById(idPedido)).thenReturn(pedido);
+        when(pedidoPort.findById(pedido.getId())).thenReturn(pedido);
 
-        assertThatThrownBy(() -> pagamentoService.processar(umaSolicitacao(idPedido, false)))
+        assertThatThrownBy(() -> pagamentoService.processar(getSolicitacaoPagamento(pedido.getId(), false)))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("COZINHA");
     }
@@ -86,12 +86,11 @@ class PagamentoServiceTest {
     @Test
     @DisplayName("Deve lançar BusinessRuleException quando pedido já possui pagamento registrado")
     void deveLancarBusinessRuleException_quandoPedidoJaPossuiPagamento() {
-        UUID idPedido = UUID.randomUUID();
-        Pedido pedido = umPedidoAguardandoPagamento(idPedido);
-        when(pedidoPort.findById(idPedido)).thenReturn(pedido);
-        when(repositoryPort.existsByPedidoId(idPedido)).thenReturn(true);
+        Pedido pedido = getPedidoAguardandoPagamento();
+        when(pedidoPort.findById(pedido.getId())).thenReturn(pedido);
+        when(repositoryPort.existsByPedidoId(pedido.getId())).thenReturn(true);
 
-        assertThatThrownBy(() -> pagamentoService.processar(umaSolicitacao(idPedido, false)))
+        assertThatThrownBy(() -> pagamentoService.processar(getSolicitacaoPagamento(pedido.getId(), false)))
                 .isInstanceOf(BusinessRuleException.class);
 
         verify(gatewayPort, never()).processar(any(), any(), anyBoolean());
@@ -100,37 +99,35 @@ class PagamentoServiceTest {
     @Test
     @DisplayName("Deve aprovar pagamento e avançar pedido para cozinha quando gateway aprova")
     void deveAprovarPagamentoEAvancarPedidoParaCozinha_quandoGatewayAprova() {
-        UUID idPedido = UUID.randomUUID();
-        Pedido pedido = umPedidoAguardandoPagamento(idPedido);
-        when(pedidoPort.findById(idPedido)).thenReturn(pedido);
-        when(repositoryPort.existsByPedidoId(idPedido)).thenReturn(false);
+        Pedido pedido = getPedidoAguardandoPagamento();
+        when(pedidoPort.findById(pedido.getId())).thenReturn(pedido);
+        when(repositoryPort.existsByPedidoId(pedido.getId())).thenReturn(false);
         when(gatewayPort.processar(FormaPagamentoEnum.PIX, pedido.getValorTotal(), false))
                 .thenReturn(new ResultadoPagamentoGateway(true, "TX-APROVADO"));
         when(repositoryPort.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Pagamento resultado = pagamentoService.processar(umaSolicitacao(idPedido, false));
+        Pagamento resultado = pagamentoService.processar(getSolicitacaoPagamento(pedido.getId(), false));
 
         assertThat(resultado.getStatusPagamento()).isEqualTo(StatusPagamentoEnum.APROVADO);
-        verify(pedidoPort).updateStatus(idPedido, StatusPedidoEnum.COZINHA);
+        verify(pedidoPort).updateStatus(pedido.getId(), StatusPedidoEnum.COZINHA);
         verify(pedidoPort, never()).cancelar(any());
     }
 
     @Test
     @DisplayName("Deve cancelar pedido e lançar PaymentRequiredException quando gateway recusa")
     void deveCancelarPedidoELancarPaymentRequiredException_quandoGatewayRecusa() {
-        UUID idPedido = UUID.randomUUID();
-        Pedido pedido = umPedidoAguardandoPagamento(idPedido);
-        when(pedidoPort.findById(idPedido)).thenReturn(pedido);
-        when(repositoryPort.existsByPedidoId(idPedido)).thenReturn(false);
+        Pedido pedido = getPedidoAguardandoPagamento();
+        when(pedidoPort.findById(pedido.getId())).thenReturn(pedido);
+        when(repositoryPort.existsByPedidoId(pedido.getId())).thenReturn(false);
         when(gatewayPort.processar(FormaPagamentoEnum.PIX, pedido.getValorTotal(), true))
                 .thenReturn(new ResultadoPagamentoGateway(false, "TX-RECUSADO"));
         when(repositoryPort.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThatThrownBy(() -> pagamentoService.processar(umaSolicitacao(idPedido, true)))
+        assertThatThrownBy(() -> pagamentoService.processar(getSolicitacaoPagamento(pedido.getId(), true)))
                 .isInstanceOf(PaymentRequiredException.class)
                 .hasMessageContaining("TX-RECUSADO");
 
-        verify(pedidoPort).cancelar(idPedido);
+        verify(pedidoPort).cancelar(pedido.getId());
         verify(pedidoPort, never()).updateStatus(any(), any());
     }
 

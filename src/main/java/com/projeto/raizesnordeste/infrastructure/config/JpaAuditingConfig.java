@@ -9,6 +9,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Optional;
 
+import static java.util.Objects.isNull;
+
 @Configuration
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")
 public class JpaAuditingConfig {
@@ -18,7 +20,7 @@ public class JpaAuditingConfig {
         return () -> {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-            if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            if (isNull(authentication) || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
                 return Optional.of("system");
             }
 

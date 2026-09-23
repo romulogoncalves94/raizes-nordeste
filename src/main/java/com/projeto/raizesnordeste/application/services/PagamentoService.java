@@ -4,6 +4,7 @@ import com.projeto.raizesnordeste.application.ports.IPagamentoGatewayPort;
 import com.projeto.raizesnordeste.application.ports.IPagamentoPort;
 import com.projeto.raizesnordeste.application.ports.IPagamentoRepositoryPort;
 import com.projeto.raizesnordeste.application.ports.IPedidoPort;
+import com.projeto.raizesnordeste.domain.enums.FormaPagamentoEnum;
 import com.projeto.raizesnordeste.domain.enums.StatusPagamentoEnum;
 import com.projeto.raizesnordeste.domain.enums.StatusPedidoEnum;
 import com.projeto.raizesnordeste.domain.model.Pagamento;
@@ -34,8 +35,8 @@ public class PagamentoService implements IPagamentoPort {
     public Pagamento processar(SolicitacaoPagamento solicitacao) {
         Pedido pedido = pedidoPort.findById(solicitacao.getIdPedido());
 
-        if (pedido.getStatus() != StatusPedidoEnum.AGUARDANDO_PAGAMENTO) {
-            throw new BusinessRuleException("Pedido não está aguardando pagamento (status atual: " + pedido.getStatus() + ")");
+        if (!StatusPedidoEnum.AGUARDANDO_PAGAMENTO.equals(pedido.getStatus())) {
+            throw new BusinessRuleException(String.format("Pedido não está aguardando pagamento (status atual: %s)", pedido.getStatus()));
         }
 
         if (repositoryPort.existsByPedidoId(pedido.getId())) {
@@ -43,27 +44,21 @@ public class PagamentoService implements IPagamentoPort {
         }
 
         boolean simularFalha = Boolean.TRUE.equals(solicitacao.getSimularFalha());
-        ResultadoPagamentoGateway resultado = gatewayPort.processar(solicitacao.getFormaPagamento(), pedido.getValorTotal(), simularFalha);
+        ResultadoPagamentoGateway resultadoPagamento = gatewayPort.processar(solicitacao.getFormaPagamento(), pedido.getValorTotal(), simularFalha);
 
-        Pagamento pagamento = new Pagamento();
-        pagamento.setIdPedido(pedido.getId());
-        pagamento.setFormaPagamento(solicitacao.getFormaPagamento());
-        pagamento.setTransacaoGatewayId(resultado.getTransacaoId());
-        pagamento.setStatusPagamento(Boolean.TRUE.equals(resultado.getAprovado())
-                ? StatusPagamentoEnum.APROVADO
-                : StatusPagamentoEnum.RECUSADO);
-
+        Pagamento pagamento = buildPagamento(pedido.getId(), solicitacao.getFormaPagamento(), resultadoPagamento);
         Pagamento pagamentoSalvo = repositoryPort.save(pagamento);
 
-        if (pagamentoSalvo.getStatusPagamento() == StatusPagamentoEnum.APROVADO) {
+        if (StatusPagamentoEnum.APROVADO.equals(pagamentoSalvo.getStatusPagamento())) {
             pedidoPort.updateStatus(pedido.getId(), StatusPedidoEnum.COZINHA);
             return pagamentoSalvo;
         }
 
         pedidoPort.cancelar(pedido.getId());
+
         throw new PaymentRequiredException(
-                "Pagamento recusado pelo gateway (transacaoId: " + pagamentoSalvo.getTransacaoGatewayId()
-                        + "). Pedido cancelado e estoque estornado."
+                String.format("Pagamento recusado pelo gateway (transacaoId: %s). Pedido cancelado e estoque estornado."
+                        , pagamentoSalvo.getTransacaoGatewayId())
         );
     }
 
@@ -77,5 +72,17 @@ public class PagamentoService implements IPagamentoPort {
     public Pagamento findByPedido(UUID idPedido) {
         return repositoryPort.findByPedidoId(idPedido)
                 .orElseThrow(() -> new ResourceNotFoundException("Pagamento não encontrado para o pedido informado"));
+    }
+
+    private Pagamento buildPagamento(UUID idPedido, FormaPagamentoEnum formaPagamento, ResultadoPagamentoGateway resultadoPagamento) {
+        Pagamento pagamento = new Pagamento();
+        pagamento.setIdPedido(idPedido);
+        pagamento.setFormaPagamento(formaPagamento);
+        pagamento.setTransacaoGatewayId(resultadoPagamento.getTransacaoId());
+        pagamento.setStatusPagamento(Boolean.TRUE.equals(resultadoPagamento.getAprovado())
+                ? StatusPagamentoEnum.APROVADO
+                : StatusPagamentoEnum.RECUSADO);
+
+        return pagamento;
     }
 }

@@ -1,5 +1,8 @@
 package com.projeto.raizesnordeste.domain.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum CategoriaProdutoEnum {
     PRATO_PRINCIPAL("Prato Principal"),
     ACOMPANHAMENTO("Acompanhamento"),
@@ -15,7 +18,4 @@ public enum CategoriaProdutoEnum {
         this.descricao = descricao;
     }
 
-    public String getDescricao() {
-        return descricao;
-    }
 }

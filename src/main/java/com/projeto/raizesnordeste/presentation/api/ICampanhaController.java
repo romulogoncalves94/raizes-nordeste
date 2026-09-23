@@ -76,7 +76,7 @@ public interface ICampanhaController {
                     @ApiResponse(responseCode = "200", description = "Lista de campanhas vigentes retornada com sucesso")
             })
     @GetMapping("/vigentes")
-    ResponseEntity<List<CampanhaResponse>> findVigentes();
+    ResponseEntity<List<CampanhaResponse>> findCampanhasVigentes();
 
     @Operation(summary = "Atualizar campanha",
             responses = {

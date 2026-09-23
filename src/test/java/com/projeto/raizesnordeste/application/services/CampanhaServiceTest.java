@@ -34,7 +34,7 @@ class CampanhaServiceTest {
     @InjectMocks
     private CampanhaService campanhaService;
 
-    private Campanha umaCampanha(UUID id, String nome, BigDecimal percentual, LocalDateTime inicio, LocalDateTime fim, Boolean ativa) {
+    private Campanha getCampanha(UUID id, String nome, BigDecimal percentual, LocalDateTime inicio, LocalDateTime fim, Boolean ativa) {
         return new Campanha(id, nome, percentual, inicio, fim, ativa);
     }
 
@@ -42,7 +42,7 @@ class CampanhaServiceTest {
     @DisplayName("Deve lançar BusinessRuleException quando dataFim é igual à dataInicio")
     void deveLancarBusinessRuleException_quandoDataFimIgualDataInicio() {
         LocalDateTime data = LocalDateTime.now();
-        Campanha campanha = umaCampanha(null, "Semana Nordestina", BigDecimal.TEN, data, data, true);
+        Campanha campanha = getCampanha(null, "Semana Nordestina", BigDecimal.TEN, data, data, true);
 
         assertThatThrownBy(() -> campanhaService.save(campanha))
                 .isInstanceOf(BusinessRuleException.class);
@@ -53,17 +53,18 @@ class CampanhaServiceTest {
     @Test
     @DisplayName("Deve lançar BusinessRuleException quando dataFim é anterior à dataInicio")
     void deveLancarBusinessRuleException_quandoDataFimAnteriorADataInicio() {
-        LocalDateTime inicio = LocalDateTime.now();
-        Campanha campanha = umaCampanha(null, "Semana Nordestina", BigDecimal.TEN, inicio, inicio.minusDays(1), true);
+        LocalDateTime data = LocalDateTime.now();
+        Campanha campanha = getCampanha(null, "Semana Nordestina", BigDecimal.TEN, data, data.minusDays(1), true);
 
         assertThatThrownBy(() -> campanhaService.save(campanha))
                 .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
-    @DisplayName("Deve salvar sem validar vigência quando datas são nulas")
-    void deveSalvarSemValidarVigencia_quandoDatasNulas() {
-        Campanha campanha = umaCampanha(null, "Sem prazo definido", BigDecimal.TEN, null, null, true);
+    @DisplayName("Deve salvar sem validar vigência quando datas são válidas")
+    void deveSalvarSemValidarVigencia_quandoDatasSaoValidas() {
+        LocalDateTime data = LocalDateTime.now();
+        Campanha campanha = getCampanha(null, "Sem prazo definido", BigDecimal.TEN, data, data.plusDays(7), true);
         when(repositoryPort.save(campanha)).thenReturn(campanha);
 
         Campanha resultado = campanhaService.save(campanha);
@@ -75,7 +76,7 @@ class CampanhaServiceTest {
     @DisplayName("Deve definir ativa como true quando ativa não é informada")
     void deveDefinirAtivaComoTrue_quandoAtivaNaoInformada() {
         LocalDateTime inicio = LocalDateTime.now();
-        Campanha campanha = umaCampanha(null, "Semana Nordestina", BigDecimal.TEN, inicio, inicio.plusDays(7), null);
+        Campanha campanha = getCampanha(null, "Semana Nordestina", BigDecimal.TEN, inicio, inicio.plusDays(7), null);
         when(repositoryPort.save(campanha)).thenReturn(campanha);
 
         Campanha resultado = campanhaService.save(campanha);
@@ -96,18 +97,18 @@ class CampanhaServiceTest {
     @Test
     @DisplayName("Deve delegar ao repositório com data atual ao buscar campanhas vigentes")
     void deveDelegarAoRepositorioComDataAtual_quandoBuscarVigentes() {
-        when(repositoryPort.findVigentes(any(LocalDateTime.class))).thenReturn(List.of());
+        when(repositoryPort.findCampanhasVigentes(any(LocalDateTime.class))).thenReturn(List.of());
 
-        List<Campanha> vigentes = campanhaService.findVigentes();
+        List<Campanha> vigentes = campanhaService.findCampanhasVigentes();
 
         assertThat(vigentes).isEmpty();
-        verify(repositoryPort).findVigentes(any(LocalDateTime.class));
+        verify(repositoryPort).findCampanhasVigentes(any(LocalDateTime.class));
     }
 
     @Test
     @DisplayName("Deve retornar Optional vazio quando não há campanha vigente")
     void deveRetornarOptionalVazio_quandoNaoHaCampanhaVigente() {
-        when(repositoryPort.findVigentes(any(LocalDateTime.class))).thenReturn(List.of());
+        when(repositoryPort.findCampanhasVigentes(any(LocalDateTime.class))).thenReturn(List.of());
 
         Optional<Campanha> resultado = campanhaService.findMelhorVigente();
 
@@ -117,9 +118,9 @@ class CampanhaServiceTest {
     @Test
     @DisplayName("Deve escolher campanha com maior percentual de desconto quando múltiplas vigentes")
     void deveEscolherCampanhaComMaiorPercentualDesconto_quandoMultiplasVigentes() {
-        Campanha menor = umaCampanha(UUID.randomUUID(), "Desconto 10", new BigDecimal("10"), null, null, true);
-        Campanha maior = umaCampanha(UUID.randomUUID(), "Desconto 25", new BigDecimal("25"), null, null, true);
-        when(repositoryPort.findVigentes(any(LocalDateTime.class))).thenReturn(List.of(menor, maior));
+        Campanha menor = getCampanha(UUID.randomUUID(), "Desconto 10", new BigDecimal("10"), null, null, true);
+        Campanha maior = getCampanha(UUID.randomUUID(), "Desconto 25", new BigDecimal("25"), null, null, true);
+        when(repositoryPort.findCampanhasVigentes(any(LocalDateTime.class))).thenReturn(List.of(menor, maior));
 
         Optional<Campanha> resultado = campanhaService.findMelhorVigente();
 
@@ -131,7 +132,7 @@ class CampanhaServiceTest {
     void deveAtualizarCampanha_quandoVigenciaValida() {
         UUID id = UUID.randomUUID();
         LocalDateTime inicio = LocalDateTime.now();
-        Campanha campanha = umaCampanha(id, "Semana Nordestina", BigDecimal.TEN, inicio, inicio.plusDays(7), true);
+        Campanha campanha = getCampanha(id, "Semana Nordestina", BigDecimal.TEN, inicio, inicio.plusDays(7), true);
         when(repositoryPort.update(campanha)).thenReturn(campanha);
 
         Campanha resultado = campanhaService.update(id, campanha);
@@ -144,7 +145,7 @@ class CampanhaServiceTest {
     void deveLancarBusinessRuleException_quandoAtualizarComVigenciaInvalida() {
         UUID id = UUID.randomUUID();
         LocalDateTime inicio = LocalDateTime.now();
-        Campanha campanha = umaCampanha(id, "Semana Nordestina", BigDecimal.TEN, inicio, inicio.minusHours(1), true);
+        Campanha campanha = getCampanha(id, "Semana Nordestina", BigDecimal.TEN, inicio, inicio.minusHours(1), true);
 
         assertThatThrownBy(() -> campanhaService.update(id, campanha))
                 .isInstanceOf(BusinessRuleException.class);
@@ -168,7 +169,7 @@ class CampanhaServiceTest {
     @DisplayName("Deve excluir campanha quando existente")
     void deveExcluirCampanha_quandoExistente() {
         UUID id = UUID.randomUUID();
-        when(repositoryPort.findById(id)).thenReturn(Optional.of(umaCampanha(id, "Campanha", BigDecimal.TEN, null, null, true)));
+        when(repositoryPort.findById(id)).thenReturn(Optional.of(getCampanha(id, "Campanha", BigDecimal.TEN, null, null, true)));
 
         campanhaService.delete(id);
 

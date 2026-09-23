@@ -23,9 +23,10 @@ public class ProgramaFidelidadeRepositoryAdapter implements IProgramaFidelidadeR
 
     @Override
     public ProgramaFidelidade save(ProgramaFidelidade programa) {
-        ProgramaFidelidadeEntity entity = new ProgramaFidelidadeEntity();
-        entity.setUsuario(usuarioRepository.getReferenceById(programa.getIdUsuario()));
-        entity.setSaldoPontos(programa.getSaldoPontos());
+        ProgramaFidelidadeEntity entity = ProgramaFidelidadeEntity.builder()
+                .usuario(usuarioRepository.getReferenceById(programa.getIdUsuario()))
+                .saldoPontos(programa.getSaldoPontos())
+                .build();
 
         return mapper.toDomain(repository.save(entity));
     }
@@ -33,11 +34,6 @@ public class ProgramaFidelidadeRepositoryAdapter implements IProgramaFidelidadeR
     @Override
     public Optional<ProgramaFidelidade> findByUsuarioId(UUID idUsuario) {
         return repository.findByUsuario_Id(idUsuario).map(mapper::toDomain);
-    }
-
-    @Override
-    public boolean existsByUsuarioId(UUID idUsuario) {
-        return repository.existsByUsuario_Id(idUsuario);
     }
 
     @Override

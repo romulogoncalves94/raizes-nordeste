@@ -22,11 +22,12 @@ public class PagamentoRepositoryAdapter implements IPagamentoRepositoryPort {
 
     @Override
     public Pagamento save(Pagamento pagamento) {
-        PagamentoEntity entity = new PagamentoEntity();
-        entity.setPedido(pedidoRepository.getReferenceById(pagamento.getIdPedido()));
-        entity.setFormaPagamento(pagamento.getFormaPagamento());
-        entity.setStatusPagamento(pagamento.getStatusPagamento());
-        entity.setTransacaoGatewayId(pagamento.getTransacaoGatewayId());
+        PagamentoEntity entity = PagamentoEntity.builder()
+                .pedido(pedidoRepository.getReferenceById(pagamento.getIdPedido()))
+                .formaPagamento(pagamento.getFormaPagamento())
+                .statusPagamento(pagamento.getStatusPagamento())
+                .transacaoGatewayId(pagamento.getTransacaoGatewayId())
+                .build();
 
         return mapper.toDomain(repository.save(entity));
     }
