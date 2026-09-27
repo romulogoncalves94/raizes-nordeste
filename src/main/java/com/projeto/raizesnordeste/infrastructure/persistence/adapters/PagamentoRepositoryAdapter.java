@@ -27,6 +27,7 @@ public class PagamentoRepositoryAdapter implements IPagamentoRepositoryPort {
                 .formaPagamento(pagamento.getFormaPagamento())
                 .statusPagamento(pagamento.getStatusPagamento())
                 .transacaoGatewayId(pagamento.getTransacaoGatewayId())
+                .dataProcessamento(pagamento.getDataProcessamento())
                 .build();
 
         return mapper.toDomain(repository.save(entity));

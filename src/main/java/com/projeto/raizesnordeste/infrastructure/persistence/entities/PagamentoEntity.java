@@ -18,7 +18,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -52,7 +51,6 @@ public class PagamentoEntity extends AuditoriaEntity {
     @Column(name = "TRANSACAO_GATEWAY_ID", length = 100)
     private String transacaoGatewayId;
 
-    @CreationTimestamp
     @Column(name = "DATA_PROCESSAMENTO", updatable = false)
     private LocalDateTime dataProcessamento;
 

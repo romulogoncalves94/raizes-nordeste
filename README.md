@@ -136,6 +136,7 @@ Authorization: Bearer <token>
 
 > Notas de backlog:
 > - A busca de usuário por id (`GET /api/usuarios/{id}`) hoje exige `GERENTE`/`ATENDENTE` — não existe ainda um endpoint de "meu perfil" para que um `CLIENTE` consulte os próprios dados sem essas roles.
+> - `PUT /api/usuarios/{id}` exige apenas `authenticated()` — nem o `SecurityConfig` nem `UsuarioService.update` comparam o `id` do path com o usuário autenticado. Na prática, qualquer usuário logado pode editar o cadastro de qualquer outro (inclusive trocar perfil/e-mail/CPF alheios). É um gap de autorização a resolver antes de qualquer uso além de demonstração acadêmica — ver `ROTEIRO_TESTES_MANUAIS.md`, Fase 9, para o passo a passo que evidencia o comportamento.
 > - O pedido é criado com `idUsuario` explícito no corpo da requisição (não derivado do token JWT) — ainda não há extração automática do usuário autenticado a partir do token para preencher esse campo.
 > - `GET /api/pedidos` hoje não filtra pedidos por dono (`CLIENTE` não consegue listar só os próprios pedidos) — está restrito a `GERENTE`/`ATENDENTE`.
 
@@ -337,3 +338,7 @@ Testes de integração dos 9 controllers (`@SpringBootTest` + `MockMvc`, um por 
 A coleção não depende de massa de dados pré-cadastrada: cada request salva em variáveis de coleção (tokens, ids) o que os próximos passos precisam, então basta importar e rodar as pastas em ordem (via Collection Runner ou manualmente) contra uma instância local limpa (`docker-compose up -d` + `./mvnw spring-boot:run`).
 
 Import no Postman: **File → Import** → selecione `postman/RaizesNordeste.postman_collection.json`. No Insomnia, use **Import/Export → Import Data → From File** (compatível com o formato Postman v2.1).
+
+## Roteiro de testes manuais (Swagger)
+
+Para explorar a API manualmente pelo Swagger UI (`http://localhost:8080/swagger-ui.html`) em vez de rodar a coleção Postman, siga `ROTEIRO_TESTES_MANUAIS.md` (raiz do repositório). Ele usa a massa de dados do seed `V5` (mesmas credenciais da seção "Usuários de teste (seed)" acima), documenta a matriz de permissões por perfil, os payloads reais de cada request e os status HTTP esperados — incluindo os comportamentos não intuitivos descritos nas "Notas de backlog" acima (ex.: desconto de campanha automático, `BusinessRuleException` retornando 409 em vez de 400).

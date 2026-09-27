@@ -33,7 +33,7 @@ public class ProdutoEntity extends AuditoriaEntity {
     @Column(name = "NOME", nullable = false, length = 150)
     private String nome;
 
-    @Column(name = "PRECO", nullable = false, length = 10, scale = 2)
+    @Column(name = "PRECO", nullable = false, precision = 10, scale = 2)
     private BigDecimal preco;
 
     @Enumerated(EnumType.STRING)

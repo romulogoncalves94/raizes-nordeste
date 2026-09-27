@@ -18,6 +18,7 @@ import com.projeto.raizesnordeste.domain.model.Pedido;
 import com.projeto.raizesnordeste.domain.model.SolicitacaoResgatePontos;
 import com.projeto.raizesnordeste.presentation.exceptions.BusinessRuleException;
 import com.projeto.raizesnordeste.presentation.exceptions.ResourceNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -32,6 +33,7 @@ import java.util.UUID;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
+@Slf4j
 public class PedidoService implements IPedidoPort {
 
     private static final Set<StatusPedidoEnum> STATUS_FINAIS = Set.of(StatusPedidoEnum.CANCELADO, StatusPedidoEnum.ENTREGUE);
@@ -59,14 +61,20 @@ public class PedidoService implements IPedidoPort {
     @Override
     @Transactional
     public Pedido save(Pedido pedido) {
+        log.info("Iniciando criação de pedido para usuário {} na unidade {} (canal={}, itens={})",
+                pedido.getIdUsuario(), pedido.getIdUnidade(), pedido.getCanalPedido(),
+                isNull(pedido.getItens()) ? 0 : pedido.getItens().size());
+
         usuarioPort.findById(pedido.getIdUsuario());
         unidadePort.findById(pedido.getIdUnidade());
 
         if (isNull(pedido.getItens()) || pedido.getItens().isEmpty()) {
+            log.warn("Tentativa de criar pedido sem itens para usuário {}", pedido.getIdUsuario());
             throw new BusinessRuleException("O pedido precisa ter ao menos um item");
         }
 
         BigDecimal valorBruto = mapValoresBrutoPedido(pedido);
+        log.debug("Valor bruto calculado para pedido do usuário {}: R$ {}", pedido.getIdUsuario(), valorBruto);
 
         BigDecimal valorRestante = valorBruto;
         int pontosResgatados = Optional.ofNullable(pedido.getPontosResgatados()).orElse(0);
@@ -77,6 +85,8 @@ public class PedidoService implements IPedidoPort {
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.DOWN);
 
             if (descontoPontos.compareTo(valorRestante) > 0) {
+                log.warn("Desconto de pontos (R$ {}) maior que valor restante do pedido (R$ {}) para usuário {}",
+                        descontoPontos, valorRestante, pedido.getIdUsuario());
                 throw new BusinessRuleException(
                         String.format("Desconto de pontos (R$%.2f) não pode ser maior que o valor do pedido (R$%.2f)", descontoPontos, valorRestante)
                 );
@@ -84,6 +94,7 @@ public class PedidoService implements IPedidoPort {
 
             programaFidelidadePort.resgatar(new SolicitacaoResgatePontos(pedido.getIdUsuario(), pontosResgatados));
             valorRestante = valorRestante.subtract(descontoPontos);
+            log.info("Resgatados {} pontos (R$ {} de desconto) para usuário {}", pontosResgatados, descontoPontos, pedido.getIdUsuario());
         }
 
         Optional<Campanha> campanhaVigente = campanhaPort.findMelhorVigente();
@@ -98,23 +109,40 @@ public class PedidoService implements IPedidoPort {
 
             valorRestante = valorRestante.subtract(descontoCampanha);
             idCampanhaAplicada = campanha.getId();
+            log.info("Campanha '{}' ({}% ) aplicada ao pedido do usuário {}: desconto de R$ {}",
+                    campanha.getNome(), campanha.getPercentualDesconto(), pedido.getIdUsuario(), descontoCampanha);
         }
 
         setValoresTotaisPedido(pedido, valorBruto, descontoPontos, descontoCampanha, valorRestante, pontosResgatados, idCampanhaAplicada);
 
-        return repositoryPort.save(pedido);
+        Pedido pedidoSalvo = repositoryPort.save(pedido);
+        log.info("Pedido {} criado com sucesso para usuário {}: valor total R$ {} (status={})",
+                pedidoSalvo.getId(), pedidoSalvo.getIdUsuario(), pedidoSalvo.getValorTotal(), pedidoSalvo.getStatus());
+
+        return pedidoSalvo;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Pedido findById(UUID id) {
-        return repositoryPort.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Pedido não encontrado"));
+        log.debug("Buscando pedido {}", id);
+
+        Pedido pedido = repositoryPort.findById(id)
+                .orElseThrow(() -> {
+                    log.info("Pedido {} não encontrado", id);
+                    return new ResourceNotFoundException("Pedido não encontrado");
+                });
+
+        log.debug("Pedido {} encontrado (status={})", pedido.getId(), pedido.getStatus());
+        return pedido;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<Pedido> findAll(Integer page, Integer linesPerPage, String direction, String orderBy, CanalPedidoEnum canalPedido) {
+        log.debug("Listando pedidos: page={} linesPerPage={} direction={} orderBy={} canalPedido={}",
+                page, linesPerPage, direction, orderBy, canalPedido);
+
         PageRequest pageRequest = PageRequest.of(
                 page,
                 linesPerPage,
@@ -132,16 +160,22 @@ public class PedidoService implements IPedidoPort {
     @Override
     @Transactional
     public Pedido updateStatus(UUID id, StatusPedidoEnum status) {
+        log.info("Solicitada alteração de status do pedido {} para {}", id, status);
+
         Pedido pedido = findById(id);
 
         validarPedidoNaoFinalizado(pedido);
 
+        StatusPedidoEnum statusAnterior = pedido.getStatus();
         pedido.setStatus(status);
 
         Pedido pedidoAtualizado = repositoryPort.update(pedido);
+        log.info("Pedido {} alterou status de {} para {}", id, statusAnterior, status);
 
         if (StatusPedidoEnum.ENTREGUE.equals(status)) {
             programaFidelidadePort.acumularPorCompra(pedido.getIdUsuario(), pedido.getValorTotal());
+            log.info("Pontos de fidelidade acumulados para usuário {} referentes ao pedido {} (valor R$ {})",
+                    pedido.getIdUsuario(), id, pedido.getValorTotal());
         }
 
         return pedidoAtualizado;
@@ -150,6 +184,8 @@ public class PedidoService implements IPedidoPort {
     @Override
     @Transactional
     public Pedido cancelar(UUID id) {
+        log.info("Solicitado cancelamento do pedido {}", id);
+
         Pedido pedido = findById(id);
 
         validarPedidoNaoFinalizado(pedido);
@@ -160,15 +196,21 @@ public class PedidoService implements IPedidoPort {
 
         if (nonNull(pedido.getPontosResgatados()) && pedido.getPontosResgatados() > 0) {
             programaFidelidadePort.estornarResgate(pedido.getIdUsuario(), pedido.getPontosResgatados());
+            log.info("Estornados {} pontos de fidelidade do usuário {} referentes ao cancelamento do pedido {}",
+                    pedido.getPontosResgatados(), pedido.getIdUsuario(), id);
         }
 
         pedido.setStatus(StatusPedidoEnum.CANCELADO);
 
-        return repositoryPort.update(pedido);
+        Pedido pedidoCancelado = repositoryPort.update(pedido);
+        log.info("Pedido {} cancelado e estoque estornado ({} itens)", id, pedido.getItens().size());
+
+        return pedidoCancelado;
     }
 
     private void validarPedidoNaoFinalizado(Pedido pedido) {
         if (STATUS_FINAIS.contains(pedido.getStatus())) {
+            log.warn("Tentativa de alterar pedido {} já finalizado (status atual: {})", pedido.getId(), pedido.getStatus());
             throw new BusinessRuleException(String.format("Não é possível alterar um pedido com status %s", pedido.getStatus()));
         }
     }

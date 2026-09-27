@@ -6,7 +6,7 @@ spring:
     username: raizes_user
     password: raizes_password
   jpa:
-    show-sql: true
+    show-sql: false
     hibernate:
       ddl-auto: validate
   flyway:

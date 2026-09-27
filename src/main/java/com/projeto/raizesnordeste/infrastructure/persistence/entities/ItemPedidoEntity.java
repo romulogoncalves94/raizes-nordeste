@@ -18,7 +18,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Builder //TODO: verificar quantidade de anotações do lombok, se todas são necessárias
+@Builder
 @Getter
 @Setter
 @NoArgsConstructor
