@@ -24,7 +24,21 @@ src/main/java/com/projeto/raizesnordeste/
 └── presentation/       # Controllers REST, DTOs (records) e tratamento de exceções
 ```
 
-Cada funcionalidade é implementada como uma fatia vertical completa passando por todas as camadas (ver `Usuario` como referência). Consulte `.claude/projeto/PROMPT.md` para os diagramas Mermaid (DER, arquitetura, fluxograma, casos de uso).
+Cada funcionalidade é implementada como uma fatia vertical completa passando por todas as camadas (ver `Usuario` como referência). Consulte `.claude/projeto/PROMPT.md` para a fonte Mermaid dos diagramas abaixo (DER, arquitetura, fluxograma, casos de uso).
+
+## Diagramas do Sistema
+
+### Arquitetura (Clean Architecture)
+![Diagrama de arquitetura em camadas](docs/images/arquitetura.png)
+
+### Diagrama de Casos de Uso
+![Diagrama de casos de uso](docs/images/casos-de-uso.png)
+
+### DER (Diagrama Entidade-Relacionamento)
+![Diagrama entidade-relacionamento](docs/images/der.png)
+
+### Diagrama de Classes (Domínio)
+![Diagrama de classes do domínio](docs/images/diagrama-de-classes.png)
 
 ## Como executar
 
@@ -162,7 +176,7 @@ Todas as respostas de erro seguem o formato:
 
 ## Fluxo crítico do MVP: Controle de Estoque por Unidade
 
-Fluxo de negócio obrigatório da Roteiro. Um `GERENTE` ou `ATENDENTE` registra a movimentação (`ENTRADA` ou `SAÍDA`) de um produto em uma unidade:
+Um `GERENTE` ou `ATENDENTE` registra a movimentação (`ENTRADA` ou `SAÍDA`) de um produto em uma unidade:
 
 ```
 POST /api/estoques/movimentar
@@ -183,7 +197,8 @@ Regras aplicadas:
 - **Auditoria automática**: toda entidade (`Usuario`, `Unidade`, `Produto`, `Estoque`, etc.) grava automaticamente `criadoPor`/`alteradoPor` com o e-mail do usuário autenticado (via Spring Data JPA Auditing) e `criadoEm`/`alteradoEm` com o timestamp — não é preciso fazer isso manualmente em cada service.
 - **Consulta de saldo**: `GET /api/estoques/saldo?idUnidade=...&idProduto=...` retorna o saldo atual de um produto em uma unidade específica.
 
-Consulte o fluxograma atualizado em `.claude/projeto/PROMPT.md` (seção "Fluxograma") para o desenho completo do fluxo, incluindo os casos de erro (404 unidade/produto/estoque inexistente, 409 saldo insuficiente).
+#### Fluxograma do Fluxo Crítico (Controle de Estoque por Unidade)
+![Fluxograma do fluxo crítico de estoque](docs/images/fluxograma.png)
 
 ## Pedidos multicanal (`canalPedido`)
 
@@ -207,9 +222,9 @@ Content-Type: application/json
 Regras aplicadas:
 - **`canalPedido`** aceita `APP`, `TOTEM`, `BALCAO`, `PICKUP` ou `WEB`, e é filtrável na listagem: `GET /api/pedidos?canalPedido=TOTEM`.
 - **`precoUnitario` de cada item é calculado no servidor** a partir do preço atual do produto (`Produto.preco`) — nunca confia em valor enviado pelo cliente.
-- **Integração com Estoque (Sprint 4)**: ao criar o pedido, cada item gera uma movimentação de `SAIDA` no estoque da unidade (reaproveita `EstoqueService.movimentar`), com todas as garantias já existentes (lock pessimista, 409 se saldo insuficiente, 404 se não houver registro de estoque para o par unidade/produto).
-- **`pontosResgatados` (opcional, integração com Fidelidade — Sprint 7)**: converte pontos em desconto sobre o valor do pedido (100 pontos = R$1,00) e debita o saldo do usuário na mesma transação. Retorna 409 se o desconto for maior que o valor do pedido, ou 409 se o saldo de pontos for insuficiente. Ver seção "Programa de Fidelidade" abaixo.
-- **Desconto de campanha (automático, integração com Campanhas — Sprint 8)**: se houver campanha vigente (`ativa=true` e dentro do período), o sistema aplica automaticamente o maior `percentualDesconto` disponível **sobre o valor já com desconto de pontos**. Não é algo que o cliente escolhe — é aplicado transparentemente na criação do pedido. Ver seção "Campanhas e Promoções" abaixo.
+- **Integração com Estoque**: ao criar o pedido, cada item gera uma movimentação de `SAIDA` no estoque da unidade (reaproveita `EstoqueService.movimentar`), com todas as garantias já existentes (lock pessimista, 409 se saldo insuficiente, 404 se não houver registro de estoque para o par unidade/produto).
+- **`pontosResgatados` (opcional, integração com Fidelidade)**: converte pontos em desconto sobre o valor do pedido (100 pontos = R$1,00) e debita o saldo do usuário na mesma transação. Retorna 409 se o desconto for maior que o valor do pedido, ou 409 se o saldo de pontos for insuficiente. Ver seção "Programa de Fidelidade" abaixo.
+- **Desconto de campanha (automático, integração com Campanhas)**: se houver campanha vigente (`ativa=true` e dentro do período), o sistema aplica automaticamente o maior `percentualDesconto` disponível **sobre o valor já com desconto de pontos**. Não é algo que o cliente escolhe — é aplicado transparentemente na criação do pedido. Ver seção "Campanhas e Promoções" abaixo.
 
 ### Modelo financeiro do pedido
 
@@ -221,7 +236,7 @@ Cada etapa do cálculo é **persistida separadamente** (não só o resultado fin
 | `valorDescontoPontos` | Valor em R$ abatido pelo resgate de pontos |
 | `idCampanhaAplicada` | Campanha vigente aplicada no momento da criação (nullable) |
 | `valorDescontoCampanha` | Valor em R$ abatido pela campanha |
-| `valorTotal` | `valorBruto - valorDescontoPontos - valorDescontoCampanha` — é isso que o Pagamento (Sprint 6) cobra |
+| `valorTotal` | `valorBruto - valorDescontoPontos - valorDescontoCampanha` — é esse valor que o cliente terá que pagar |
 
 Ordem de cálculo: `valorBruto` → desconto de pontos (fixo, em R$) → desconto de campanha (percentual sobre o restante) → `valorTotal`.
 
@@ -232,7 +247,7 @@ Ordem de cálculo: `valorBruto` → desconto de pontos (fixo, em R$) → descont
 
 ## Pagamento (mock)
 
-O gateway de pagamento é simulado (`MockPagamentoGatewayAdapter`, camada de infraestrutura — corresponde ao "Serviço Externo: Mock Pagamento" do diagrama de arquitetura em `.claude/projeto/PROMPT.md`). Para permitir testar os dois cenários de forma determinística (sem depender de aleatoriedade), o campo opcional `simularFalha` força a recusa:
+O gateway de pagamento é simulado (`MockPagamentoGatewayAdapter`, camada de infraestrutura — corresponde ao "Serviço Externo: Mock Pagamento" do diagrama de arquitetura). Para permitir testar os dois cenários de forma determinística (sem depender de aleatoriedade), o campo opcional `simularFalha` força a recusa:
 
 ```
 POST /api/pagamentos
@@ -264,8 +279,6 @@ Outras regras:
 **Resgate de pontos como desconto em pedido**: não existe endpoint de resgate avulso — o resgate acontece exclusivamente na criação do pedido, via o campo `pontosResgatados` (ver seção "Pedidos multicanal" acima). Conversão: **100 pontos = R$ 1,00 de desconto**. Se o pedido resgatado for cancelado (`POST /api/pedidos/{id}/cancelar`), os pontos são devolvidos automaticamente ao saldo do usuário.
 
 Cada acúmulo/resgate/estorno gera uma entrada em `HistoricoPontos` (`GET /api/fidelidade/{idUsuario}/historico`, paginado). *Nota: o enum do schema só distingue `ACUMULADO`/`RESGATE` — o estorno por cancelamento é registrado como `ACUMULADO`, sem um tipo próprio.*
-
-> **Correção (Sprint 10)**: a constraint `CHECK` de `historico_pontos.tipo` na migration `V1` só permitia os valores `'ACUMULO'`/`'RESGATE'`, mas o enum Java `TipoHistoricoPontosEnum` grava `'ACUMULADO'` (`EnumType.STRING`) — qualquer acúmulo de pontos (pedido `ENTREGUE`) violava a constraint e falhava em runtime. Corrigido na migration `V4__fix_historico_pontos_tipo_check.sql`, que recria o `CHECK` aceitando `'ACUMULADO'`. A coleção Postman (pasta 07) exercita esse fluxo como teste de regressão.
 
 Consultas:
 - `GET /api/fidelidade/{idUsuario}` — saldo atual e dados do programa.
